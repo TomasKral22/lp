@@ -1,0 +1,1800 @@
+{
+  "schemaVersion": 3,
+  "document": {
+    "id": "document-001",
+    "bloky": [
+      {
+        "id": "blok-lp-001",
+        "typ": "lp",
+        "poradi": 1,
+        "obsah": {
+          "id": "lp-001",
+          "fieldIds": {
+            "cislo_lp": "lp-001.cislo_lp",
+            "nadpis": "lp-001.nadpis",
+            "doplnujici_informace": "lp-001.doplnujici_informace"
+          },
+          "cislo_lp": "",
+          "nadpis": "Testertestujetest",
+          "lpp": [
+            {
+              "id": "lp-001.lpp-001",
+              "fieldIds": {
+                "nazev": "lp-001.lpp-001.nazev",
+                "zneni": "lp-001.lpp-001.zneni",
+                "platnost": "lp-001.lpp-001.platnost"
+              },
+              "nazev": "LPP",
+              "zneni": "A \tTestertestujetest Testertestujetest",
+              "platnost": {
+                "id": "lp-001.lpp-001.platnost",
+                "fieldIds": {
+                  "rezimy": "lp-001.lpp-001.platnost.rezimy",
+                  "doplnujici_text": "lp-001.lpp-001.platnost.doplnujici_text",
+                  "exportovana_hodnota": "lp-001.lpp-001.platnost.exportovana_hodnota"
+                },
+                "rezimy": [
+                  1,
+                  2,
+                  3,
+                  5
+                ],
+                "doplnujici_text": "",
+                "exportovana_hodnota": "Režim 1, 2, 3, 5",
+                "raw": "1,2,3,5",
+                "structured": true,
+                "unstructured": ""
+              }
+            }
+          ],
+          "cinnosti": [
+            {
+              "id": "lp-001.stav-001",
+              "fieldIds": {
+                "nazev_stavu": "lp-001.stav-001.nazev_stavu",
+                "zneni_stavu": "lp-001.stav-001.zneni_stavu"
+              },
+              "nazev_stavu": "A",
+              "zneni_stavu": "Testertestujetest Testertestujetest",
+              "cinnosti": [
+                {
+                  "id": "lp-001.stav-001.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-001.stav-001.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-001.stav-001.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-001.stav-001.cinnost-001.doba_provedeni",
+                    "operator": "lp-001.stav-001.cinnost-001.operator",
+                    "operator_indentation": "lp-001.stav-001.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "A",
+                  "operator_id": "lp-001.stav-001.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-001.stav-001.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-001.stav-001.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-001.stav-001.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-001.stav-001.cinnost-002.doba_provedeni",
+                    "operator": "lp-001.stav-001.cinnost-002.operator",
+                    "operator_indentation": "lp-001.stav-001.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "",
+                  "operator_id": "lp-001.stav-001.cinnost-002.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": ""
+            },
+            {
+              "id": "lp-001.stav-002",
+              "fieldIds": {
+                "nazev_stavu": "lp-001.stav-002.nazev_stavu",
+                "zneni_stavu": "lp-001.stav-002.zneni_stavu"
+              },
+              "nazev_stavu": "BTestertestujetest Testertestujetest",
+              "zneni_stavu": "",
+              "cinnosti": [
+                {
+                  "id": "lp-001.stav-002.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-001.stav-002.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-001.stav-002.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-001.stav-002.cinnost-001.doba_provedeni",
+                    "operator": "lp-001.stav-002.cinnost-001.operator",
+                    "operator_indentation": "lp-001.stav-002.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "A",
+                  "operator_id": "lp-001.stav-002.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-001.stav-002.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-001.stav-002.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-001.stav-002.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-001.stav-002.cinnost-002.doba_provedeni",
+                    "operator": "lp-001.stav-002.cinnost-002.operator",
+                    "operator_indentation": "lp-001.stav-002.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "MINUTA",
+                  "operator": "NEBO",
+                  "operator_id": "lp-001.stav-002.cinnost-002.operator",
+                  "operator_indentation": 3
+                },
+                {
+                  "id": "lp-001.stav-002.cinnost-003",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-001.stav-002.cinnost-003.poradove_cislo",
+                    "zneni_cinnosti": "lp-001.stav-002.cinnost-003.zneni_cinnosti",
+                    "doba_provedeni": "lp-001.stav-002.cinnost-003.doba_provedeni",
+                    "operator": "lp-001.stav-002.cinnost-003.operator",
+                    "operator_indentation": "lp-001.stav-002.cinnost-003.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "",
+                  "operator_id": "lp-001.stav-002.cinnost-003.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": "BTestertestujetest Testertestujetest"
+            }
+          ],
+          "pk": [
+            {
+              "id": "lp-001.pk-001",
+              "fieldIds": {
+                "nazev": "lp-001.pk-001.nazev",
+                "zneni": "lp-001.pk-001.zneni",
+                "frekvence": "lp-001.pk-001.frekvence"
+              },
+              "nazev": "PK 1",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "MINUTA"
+            },
+            {
+              "id": "lp-001.pk-002",
+              "fieldIds": {
+                "nazev": "lp-001.pk-002.nazev",
+                "zneni": "lp-001.pk-002.zneni",
+                "frekvence": "lp-001.pk-002.frekvence"
+              },
+              "nazev": "PK 2",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "DEN"
+            }
+          ],
+          "doplnujici_informace": "",
+          "parserWarnings": [
+            "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+            "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+          ],
+          "unstructured": []
+        }
+      },
+      {
+        "id": "blok-lp-002",
+        "typ": "lp",
+        "poradi": 2,
+        "obsah": {
+          "id": "lp-002",
+          "fieldIds": {
+            "cislo_lp": "lp-002.cislo_lp",
+            "nadpis": "lp-002.nadpis",
+            "doplnujici_informace": "lp-002.doplnujici_informace"
+          },
+          "cislo_lp": "",
+          "nadpis": "Testertestujetest",
+          "lpp": [
+            {
+              "id": "lp-002.lpp-001",
+              "fieldIds": {
+                "nazev": "lp-002.lpp-001.nazev",
+                "zneni": "lp-002.lpp-001.zneni",
+                "platnost": "lp-002.lpp-001.platnost"
+              },
+              "nazev": "LPP",
+              "zneni": "A \tTestertestujetest Testertestujetest",
+              "platnost": {
+                "id": "lp-002.lpp-001.platnost",
+                "fieldIds": {
+                  "rezimy": "lp-002.lpp-001.platnost.rezimy",
+                  "doplnujici_text": "lp-002.lpp-001.platnost.doplnujici_text",
+                  "exportovana_hodnota": "lp-002.lpp-001.platnost.exportovana_hodnota"
+                },
+                "rezimy": [
+                  1,
+                  2,
+                  3,
+                  5
+                ],
+                "doplnujici_text": "",
+                "exportovana_hodnota": "Režim 1, 2, 3, 5",
+                "raw": "1,2,3,5",
+                "structured": true,
+                "unstructured": ""
+              }
+            }
+          ],
+          "cinnosti": [
+            {
+              "id": "lp-002.stav-001",
+              "fieldIds": {
+                "nazev_stavu": "lp-002.stav-001.nazev_stavu",
+                "zneni_stavu": "lp-002.stav-001.zneni_stavu"
+              },
+              "nazev_stavu": "A",
+              "zneni_stavu": "Testertestujetest Testertestujetest",
+              "cinnosti": [
+                {
+                  "id": "lp-002.stav-001.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-002.stav-001.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-002.stav-001.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-002.stav-001.cinnost-001.doba_provedeni",
+                    "operator": "lp-002.stav-001.cinnost-001.operator",
+                    "operator_indentation": "lp-002.stav-001.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "A",
+                  "operator_id": "lp-002.stav-001.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-002.stav-001.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-002.stav-001.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-002.stav-001.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-002.stav-001.cinnost-002.doba_provedeni",
+                    "operator": "lp-002.stav-001.cinnost-002.operator",
+                    "operator_indentation": "lp-002.stav-001.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "",
+                  "operator_id": "lp-002.stav-001.cinnost-002.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": ""
+            },
+            {
+              "id": "lp-002.stav-002",
+              "fieldIds": {
+                "nazev_stavu": "lp-002.stav-002.nazev_stavu",
+                "zneni_stavu": "lp-002.stav-002.zneni_stavu"
+              },
+              "nazev_stavu": "BTestertestujetest Testertestujetest",
+              "zneni_stavu": "",
+              "cinnosti": [
+                {
+                  "id": "lp-002.stav-002.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-002.stav-002.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-002.stav-002.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-002.stav-002.cinnost-001.doba_provedeni",
+                    "operator": "lp-002.stav-002.cinnost-001.operator",
+                    "operator_indentation": "lp-002.stav-002.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "A",
+                  "operator_id": "lp-002.stav-002.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-002.stav-002.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-002.stav-002.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-002.stav-002.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-002.stav-002.cinnost-002.doba_provedeni",
+                    "operator": "lp-002.stav-002.cinnost-002.operator",
+                    "operator_indentation": "lp-002.stav-002.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "MINUTA",
+                  "operator": "NEBO",
+                  "operator_id": "lp-002.stav-002.cinnost-002.operator",
+                  "operator_indentation": 3
+                },
+                {
+                  "id": "lp-002.stav-002.cinnost-003",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-002.stav-002.cinnost-003.poradove_cislo",
+                    "zneni_cinnosti": "lp-002.stav-002.cinnost-003.zneni_cinnosti",
+                    "doba_provedeni": "lp-002.stav-002.cinnost-003.doba_provedeni",
+                    "operator": "lp-002.stav-002.cinnost-003.operator",
+                    "operator_indentation": "lp-002.stav-002.cinnost-003.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "",
+                  "operator_id": "lp-002.stav-002.cinnost-003.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": "BTestertestujetest Testertestujetest"
+            }
+          ],
+          "pk": [
+            {
+              "id": "lp-002.pk-001",
+              "fieldIds": {
+                "nazev": "lp-002.pk-001.nazev",
+                "zneni": "lp-002.pk-001.zneni",
+                "frekvence": "lp-002.pk-001.frekvence"
+              },
+              "nazev": "PK 1",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "MINUTA"
+            },
+            {
+              "id": "lp-002.pk-002",
+              "fieldIds": {
+                "nazev": "lp-002.pk-002.nazev",
+                "zneni": "lp-002.pk-002.zneni",
+                "frekvence": "lp-002.pk-002.frekvence"
+              },
+              "nazev": "PK 2",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "DEN"
+            }
+          ],
+          "doplnujici_informace": "",
+          "parserWarnings": [
+            "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+            "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+          ],
+          "unstructured": []
+        }
+      },
+      {
+        "id": "blok-lp-003",
+        "typ": "lp",
+        "poradi": 3,
+        "obsah": {
+          "id": "lp-003",
+          "fieldIds": {
+            "cislo_lp": "lp-003.cislo_lp",
+            "nadpis": "lp-003.nadpis",
+            "doplnujici_informace": "lp-003.doplnujici_informace"
+          },
+          "cislo_lp": "",
+          "nadpis": "Testertestujetest",
+          "lpp": [
+            {
+              "id": "lp-003.lpp-001",
+              "fieldIds": {
+                "nazev": "lp-003.lpp-001.nazev",
+                "zneni": "lp-003.lpp-001.zneni",
+                "platnost": "lp-003.lpp-001.platnost"
+              },
+              "nazev": "LPP",
+              "zneni": "A \tTestertestujetest Testertestujetest",
+              "platnost": {
+                "id": "lp-003.lpp-001.platnost",
+                "fieldIds": {
+                  "rezimy": "lp-003.lpp-001.platnost.rezimy",
+                  "doplnujici_text": "lp-003.lpp-001.platnost.doplnujici_text",
+                  "exportovana_hodnota": "lp-003.lpp-001.platnost.exportovana_hodnota"
+                },
+                "rezimy": [
+                  1,
+                  2,
+                  3,
+                  5
+                ],
+                "doplnujici_text": "",
+                "exportovana_hodnota": "Režim 1, 2, 3, 5",
+                "raw": "1,2,3,5",
+                "structured": true,
+                "unstructured": ""
+              }
+            }
+          ],
+          "cinnosti": [
+            {
+              "id": "lp-003.stav-001",
+              "fieldIds": {
+                "nazev_stavu": "lp-003.stav-001.nazev_stavu",
+                "zneni_stavu": "lp-003.stav-001.zneni_stavu"
+              },
+              "nazev_stavu": "A",
+              "zneni_stavu": "Testertestujetest Testertestujetest",
+              "cinnosti": [
+                {
+                  "id": "lp-003.stav-001.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-003.stav-001.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-003.stav-001.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-003.stav-001.cinnost-001.doba_provedeni",
+                    "operator": "lp-003.stav-001.cinnost-001.operator",
+                    "operator_indentation": "lp-003.stav-001.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "",
+                  "operator_id": "lp-003.stav-001.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-003.stav-001.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-003.stav-001.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-003.stav-001.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-003.stav-001.cinnost-002.doba_provedeni",
+                    "operator": "lp-003.stav-001.cinnost-002.operator",
+                    "operator_indentation": "lp-003.stav-001.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "",
+                  "operator_id": "lp-003.stav-001.cinnost-002.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": ""
+            },
+            {
+              "id": "lp-003.stav-002",
+              "fieldIds": {
+                "nazev_stavu": "lp-003.stav-002.nazev_stavu",
+                "zneni_stavu": "lp-003.stav-002.zneni_stavu"
+              },
+              "nazev_stavu": "BTestertestujetest Testertestujetest",
+              "zneni_stavu": "",
+              "cinnosti": [
+                {
+                  "id": "lp-003.stav-002.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-003.stav-002.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-003.stav-002.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-003.stav-002.cinnost-001.doba_provedeni",
+                    "operator": "lp-003.stav-002.cinnost-001.operator",
+                    "operator_indentation": "lp-003.stav-002.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "",
+                  "operator_id": "lp-003.stav-002.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-003.stav-002.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-003.stav-002.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-003.stav-002.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-003.stav-002.cinnost-002.doba_provedeni",
+                    "operator": "lp-003.stav-002.cinnost-002.operator",
+                    "operator_indentation": "lp-003.stav-002.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "MINUTA",
+                  "operator": "",
+                  "operator_id": "lp-003.stav-002.cinnost-002.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-003.stav-002.cinnost-003",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-003.stav-002.cinnost-003.poradove_cislo",
+                    "zneni_cinnosti": "lp-003.stav-002.cinnost-003.zneni_cinnosti",
+                    "doba_provedeni": "lp-003.stav-002.cinnost-003.doba_provedeni",
+                    "operator": "lp-003.stav-002.cinnost-003.operator",
+                    "operator_indentation": "lp-003.stav-002.cinnost-003.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "",
+                  "operator_id": "lp-003.stav-002.cinnost-003.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": "BTestertestujetest Testertestujetest"
+            }
+          ],
+          "pk": [
+            {
+              "id": "lp-003.pk-001",
+              "fieldIds": {
+                "nazev": "lp-003.pk-001.nazev",
+                "zneni": "lp-003.pk-001.zneni",
+                "frekvence": "lp-003.pk-001.frekvence"
+              },
+              "nazev": "PK 1",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "MINUTA"
+            },
+            {
+              "id": "lp-003.pk-002",
+              "fieldIds": {
+                "nazev": "lp-003.pk-002.nazev",
+                "zneni": "lp-003.pk-002.zneni",
+                "frekvence": "lp-003.pk-002.frekvence"
+              },
+              "nazev": "PK 2",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "DEN"
+            }
+          ],
+          "doplnujici_informace": "",
+          "parserWarnings": [
+            "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+            "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+          ],
+          "unstructured": []
+        }
+      },
+      {
+        "id": "blok-lp-004",
+        "typ": "lp",
+        "poradi": 4,
+        "obsah": {
+          "id": "lp-004",
+          "fieldIds": {
+            "cislo_lp": "lp-004.cislo_lp",
+            "nadpis": "lp-004.nadpis",
+            "doplnujici_informace": "lp-004.doplnujici_informace"
+          },
+          "cislo_lp": "",
+          "nadpis": "Testertestujetest",
+          "lpp": [
+            {
+              "id": "lp-004.lpp-001",
+              "fieldIds": {
+                "nazev": "lp-004.lpp-001.nazev",
+                "zneni": "lp-004.lpp-001.zneni",
+                "platnost": "lp-004.lpp-001.platnost"
+              },
+              "nazev": "LPP",
+              "zneni": "A \tTestertestujetest Testertestujetest",
+              "platnost": {
+                "id": "lp-004.lpp-001.platnost",
+                "fieldIds": {
+                  "rezimy": "lp-004.lpp-001.platnost.rezimy",
+                  "doplnujici_text": "lp-004.lpp-001.platnost.doplnujici_text",
+                  "exportovana_hodnota": "lp-004.lpp-001.platnost.exportovana_hodnota"
+                },
+                "rezimy": [
+                  1,
+                  2,
+                  3,
+                  5
+                ],
+                "doplnujici_text": "",
+                "exportovana_hodnota": "Režim 1, 2, 3, 5",
+                "raw": "1,2,3,5",
+                "structured": true,
+                "unstructured": ""
+              }
+            }
+          ],
+          "cinnosti": [
+            {
+              "id": "lp-004.stav-001",
+              "fieldIds": {
+                "nazev_stavu": "lp-004.stav-001.nazev_stavu",
+                "zneni_stavu": "lp-004.stav-001.zneni_stavu"
+              },
+              "nazev_stavu": "A",
+              "zneni_stavu": "Testertestujetest Testertestujetest",
+              "cinnosti": [
+                {
+                  "id": "lp-004.stav-001.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-004.stav-001.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-004.stav-001.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-004.stav-001.cinnost-001.doba_provedeni",
+                    "operator": "lp-004.stav-001.cinnost-001.operator",
+                    "operator_indentation": "lp-004.stav-001.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "A",
+                  "operator_id": "lp-004.stav-001.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-004.stav-001.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-004.stav-001.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-004.stav-001.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-004.stav-001.cinnost-002.doba_provedeni",
+                    "operator": "lp-004.stav-001.cinnost-002.operator",
+                    "operator_indentation": "lp-004.stav-001.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "",
+                  "operator_id": "lp-004.stav-001.cinnost-002.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": ""
+            },
+            {
+              "id": "lp-004.stav-002",
+              "fieldIds": {
+                "nazev_stavu": "lp-004.stav-002.nazev_stavu",
+                "zneni_stavu": "lp-004.stav-002.zneni_stavu"
+              },
+              "nazev_stavu": "BTestertestujetest Testertestujetest",
+              "zneni_stavu": "",
+              "cinnosti": [
+                {
+                  "id": "lp-004.stav-002.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-004.stav-002.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-004.stav-002.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-004.stav-002.cinnost-001.doba_provedeni",
+                    "operator": "lp-004.stav-002.cinnost-001.operator",
+                    "operator_indentation": "lp-004.stav-002.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "A",
+                  "operator_id": "lp-004.stav-002.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-004.stav-002.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-004.stav-002.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-004.stav-002.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-004.stav-002.cinnost-002.doba_provedeni",
+                    "operator": "lp-004.stav-002.cinnost-002.operator",
+                    "operator_indentation": "lp-004.stav-002.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "MINUTA",
+                  "operator": "NEBO",
+                  "operator_id": "lp-004.stav-002.cinnost-002.operator",
+                  "operator_indentation": 3
+                },
+                {
+                  "id": "lp-004.stav-002.cinnost-003",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-004.stav-002.cinnost-003.poradove_cislo",
+                    "zneni_cinnosti": "lp-004.stav-002.cinnost-003.zneni_cinnosti",
+                    "doba_provedeni": "lp-004.stav-002.cinnost-003.doba_provedeni",
+                    "operator": "lp-004.stav-002.cinnost-003.operator",
+                    "operator_indentation": "lp-004.stav-002.cinnost-003.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "",
+                  "operator_id": "lp-004.stav-002.cinnost-003.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": "BTestertestujetest Testertestujetest"
+            }
+          ],
+          "pk": [
+            {
+              "id": "lp-004.pk-001",
+              "fieldIds": {
+                "nazev": "lp-004.pk-001.nazev",
+                "zneni": "lp-004.pk-001.zneni",
+                "frekvence": "lp-004.pk-001.frekvence"
+              },
+              "nazev": "PK 1",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "MINUTA"
+            },
+            {
+              "id": "lp-004.pk-002",
+              "fieldIds": {
+                "nazev": "lp-004.pk-002.nazev",
+                "zneni": "lp-004.pk-002.zneni",
+                "frekvence": "lp-004.pk-002.frekvence"
+              },
+              "nazev": "PK 2",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "DEN"
+            }
+          ],
+          "doplnujici_informace": "",
+          "parserWarnings": [
+            "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+            "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+          ],
+          "unstructured": []
+        }
+      },
+      {
+        "id": "blok-lp-005",
+        "typ": "lp",
+        "poradi": 5,
+        "obsah": {
+          "id": "lp-005",
+          "fieldIds": {
+            "cislo_lp": "lp-005.cislo_lp",
+            "nadpis": "lp-005.nadpis",
+            "doplnujici_informace": "lp-005.doplnujici_informace"
+          },
+          "cislo_lp": "",
+          "nadpis": "Testertestujetest",
+          "lpp": [
+            {
+              "id": "lp-005.lpp-001",
+              "fieldIds": {
+                "nazev": "lp-005.lpp-001.nazev",
+                "zneni": "lp-005.lpp-001.zneni",
+                "platnost": "lp-005.lpp-001.platnost"
+              },
+              "nazev": "LPP",
+              "zneni": "A \tTestertestujetest Testertestujetest",
+              "platnost": {
+                "id": "lp-005.lpp-001.platnost",
+                "fieldIds": {
+                  "rezimy": "lp-005.lpp-001.platnost.rezimy",
+                  "doplnujici_text": "lp-005.lpp-001.platnost.doplnujici_text",
+                  "exportovana_hodnota": "lp-005.lpp-001.platnost.exportovana_hodnota"
+                },
+                "rezimy": [
+                  1,
+                  2,
+                  3,
+                  5
+                ],
+                "doplnujici_text": "",
+                "exportovana_hodnota": "Režim 1, 2, 3, 5",
+                "raw": "1,2,3,5",
+                "structured": true,
+                "unstructured": ""
+              }
+            }
+          ],
+          "cinnosti": [
+            {
+              "id": "lp-005.stav-001",
+              "fieldIds": {
+                "nazev_stavu": "lp-005.stav-001.nazev_stavu",
+                "zneni_stavu": "lp-005.stav-001.zneni_stavu"
+              },
+              "nazev_stavu": "A",
+              "zneni_stavu": "Testertestujetest Testertestujetest",
+              "cinnosti": [
+                {
+                  "id": "lp-005.stav-001.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-005.stav-001.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-005.stav-001.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-005.stav-001.cinnost-001.doba_provedeni",
+                    "operator": "lp-005.stav-001.cinnost-001.operator",
+                    "operator_indentation": "lp-005.stav-001.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "",
+                  "operator_id": "lp-005.stav-001.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-005.stav-001.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-005.stav-001.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-005.stav-001.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-005.stav-001.cinnost-002.doba_provedeni",
+                    "operator": "lp-005.stav-001.cinnost-002.operator",
+                    "operator_indentation": "lp-005.stav-001.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "",
+                  "operator_id": "lp-005.stav-001.cinnost-002.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": ""
+            },
+            {
+              "id": "lp-005.stav-002",
+              "fieldIds": {
+                "nazev_stavu": "lp-005.stav-002.nazev_stavu",
+                "zneni_stavu": "lp-005.stav-002.zneni_stavu"
+              },
+              "nazev_stavu": "BTestertestujetest Testertestujetest",
+              "zneni_stavu": "",
+              "cinnosti": [
+                {
+                  "id": "lp-005.stav-002.cinnost-001",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-005.stav-002.cinnost-001.poradove_cislo",
+                    "zneni_cinnosti": "lp-005.stav-002.cinnost-001.zneni_cinnosti",
+                    "doba_provedeni": "lp-005.stav-002.cinnost-001.doba_provedeni",
+                    "operator": "lp-005.stav-002.cinnost-001.operator",
+                    "operator_indentation": "lp-005.stav-002.cinnost-001.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "HODINA",
+                  "operator": "",
+                  "operator_id": "lp-005.stav-002.cinnost-001.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-005.stav-002.cinnost-002",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-005.stav-002.cinnost-002.poradove_cislo",
+                    "zneni_cinnosti": "lp-005.stav-002.cinnost-002.zneni_cinnosti",
+                    "doba_provedeni": "lp-005.stav-002.cinnost-002.doba_provedeni",
+                    "operator": "lp-005.stav-002.cinnost-002.operator",
+                    "operator_indentation": "lp-005.stav-002.cinnost-002.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "MINUTA",
+                  "operator": "",
+                  "operator_id": "lp-005.stav-002.cinnost-002.operator",
+                  "operator_indentation": 1
+                },
+                {
+                  "id": "lp-005.stav-002.cinnost-003",
+                  "fieldIds": {
+                    "poradove_cislo": "lp-005.stav-002.cinnost-003.poradove_cislo",
+                    "zneni_cinnosti": "lp-005.stav-002.cinnost-003.zneni_cinnosti",
+                    "doba_provedeni": "lp-005.stav-002.cinnost-003.doba_provedeni",
+                    "operator": "lp-005.stav-002.cinnost-003.operator",
+                    "operator_indentation": "lp-005.stav-002.cinnost-003.operator_indentation"
+                  },
+                  "zneni_cinnosti": "Testertestujetest",
+                  "doba_provedeni": "DEN",
+                  "operator": "",
+                  "operator_id": "lp-005.stav-002.cinnost-003.operator",
+                  "operator_indentation": 1
+                }
+              ],
+              "unstructured": "BTestertestujetest Testertestujetest"
+            }
+          ],
+          "pk": [
+            {
+              "id": "lp-005.pk-001",
+              "fieldIds": {
+                "nazev": "lp-005.pk-001.nazev",
+                "zneni": "lp-005.pk-001.zneni",
+                "frekvence": "lp-005.pk-001.frekvence"
+              },
+              "nazev": "PK 1",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "MINUTA"
+            },
+            {
+              "id": "lp-005.pk-002",
+              "fieldIds": {
+                "nazev": "lp-005.pk-002.nazev",
+                "zneni": "lp-005.pk-002.zneni",
+                "frekvence": "lp-005.pk-002.frekvence"
+              },
+              "nazev": "PK 2",
+              "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+              "frekvence": "DEN"
+            }
+          ],
+          "doplnujici_informace": "",
+          "parserWarnings": [
+            "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+            "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+          ],
+          "unstructured": []
+        }
+      }
+    ]
+  },
+  "source": "Testertestujetest.docx",
+  "attributeLabels": {
+    "lp.cislo_lp": "Číslo LP",
+    "lp.nadpis": "Nadpis LP",
+    "lpp.nazev": "Název LPP",
+    "lpp.zneni": "Znění LPP",
+    "lpp.platnost.rezimy": "Platnost - režimy",
+    "lpp.platnost.doplnujici_text": "Platnost - doplňující text",
+    "lpp.platnost.exportovana_hodnota": "Platnost - výsledná hodnota",
+    "stav.nazev_stavu": "Název stavu",
+    "stav.zneni_stavu": "Znění stavu",
+    "cinnost.poradove_cislo": "Pořadové číslo činnosti",
+    "cinnost.zneni_cinnosti": "Znění činnosti",
+    "cinnost.doba_provedeni": "Doba provedení",
+    "cinnost.operator": "Operátor",
+    "cinnost.operator_indentation": "Úroveň odsazení operátoru",
+    "pk.nazev": "Název PK",
+    "pk.zneni": "Znění PK",
+    "pk.frekvence": "Frekvence",
+    "lp.doplnujici_informace": "Doplňující informace",
+    "kapitola.nazev": "Název kapitoly",
+    "kapitola.html_obsah": "Obsah kapitoly"
+  },
+  "ciselniky": {
+    "doba_provedeni": [
+      "MINUTA",
+      "HODINA",
+      "DEN"
+    ],
+    "frekvence": [
+      "MINUTA",
+      "HODINA",
+      "DEN"
+    ],
+    "operator": [
+      "A",
+      "NEBO"
+    ],
+    "operator_indentation": [
+      1,
+      2,
+      3
+    ]
+  },
+  "lps": [
+    {
+      "id": "lp-001",
+      "fieldIds": {
+        "cislo_lp": "lp-001.cislo_lp",
+        "nadpis": "lp-001.nadpis",
+        "doplnujici_informace": "lp-001.doplnujici_informace"
+      },
+      "cislo_lp": "",
+      "nadpis": "Testertestujetest",
+      "lpp": [
+        {
+          "id": "lp-001.lpp-001",
+          "fieldIds": {
+            "nazev": "lp-001.lpp-001.nazev",
+            "zneni": "lp-001.lpp-001.zneni",
+            "platnost": "lp-001.lpp-001.platnost"
+          },
+          "nazev": "LPP",
+          "zneni": "A \tTestertestujetest Testertestujetest",
+          "platnost": {
+            "id": "lp-001.lpp-001.platnost",
+            "fieldIds": {
+              "rezimy": "lp-001.lpp-001.platnost.rezimy",
+              "doplnujici_text": "lp-001.lpp-001.platnost.doplnujici_text",
+              "exportovana_hodnota": "lp-001.lpp-001.platnost.exportovana_hodnota"
+            },
+            "rezimy": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "doplnujici_text": "",
+            "exportovana_hodnota": "Režim 1, 2, 3, 5",
+            "raw": "1,2,3,5",
+            "structured": true,
+            "unstructured": ""
+          }
+        }
+      ],
+      "cinnosti": [
+        {
+          "id": "lp-001.stav-001",
+          "fieldIds": {
+            "nazev_stavu": "lp-001.stav-001.nazev_stavu",
+            "zneni_stavu": "lp-001.stav-001.zneni_stavu"
+          },
+          "nazev_stavu": "A",
+          "zneni_stavu": "Testertestujetest Testertestujetest",
+          "cinnosti": [
+            {
+              "id": "lp-001.stav-001.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-001.stav-001.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-001.stav-001.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-001.stav-001.cinnost-001.doba_provedeni",
+                "operator": "lp-001.stav-001.cinnost-001.operator",
+                "operator_indentation": "lp-001.stav-001.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "A",
+              "operator_id": "lp-001.stav-001.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-001.stav-001.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-001.stav-001.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-001.stav-001.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-001.stav-001.cinnost-002.doba_provedeni",
+                "operator": "lp-001.stav-001.cinnost-002.operator",
+                "operator_indentation": "lp-001.stav-001.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "",
+              "operator_id": "lp-001.stav-001.cinnost-002.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": ""
+        },
+        {
+          "id": "lp-001.stav-002",
+          "fieldIds": {
+            "nazev_stavu": "lp-001.stav-002.nazev_stavu",
+            "zneni_stavu": "lp-001.stav-002.zneni_stavu"
+          },
+          "nazev_stavu": "BTestertestujetest Testertestujetest",
+          "zneni_stavu": "",
+          "cinnosti": [
+            {
+              "id": "lp-001.stav-002.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-001.stav-002.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-001.stav-002.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-001.stav-002.cinnost-001.doba_provedeni",
+                "operator": "lp-001.stav-002.cinnost-001.operator",
+                "operator_indentation": "lp-001.stav-002.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "A",
+              "operator_id": "lp-001.stav-002.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-001.stav-002.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-001.stav-002.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-001.stav-002.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-001.stav-002.cinnost-002.doba_provedeni",
+                "operator": "lp-001.stav-002.cinnost-002.operator",
+                "operator_indentation": "lp-001.stav-002.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "MINUTA",
+              "operator": "NEBO",
+              "operator_id": "lp-001.stav-002.cinnost-002.operator",
+              "operator_indentation": 3
+            },
+            {
+              "id": "lp-001.stav-002.cinnost-003",
+              "fieldIds": {
+                "poradove_cislo": "lp-001.stav-002.cinnost-003.poradove_cislo",
+                "zneni_cinnosti": "lp-001.stav-002.cinnost-003.zneni_cinnosti",
+                "doba_provedeni": "lp-001.stav-002.cinnost-003.doba_provedeni",
+                "operator": "lp-001.stav-002.cinnost-003.operator",
+                "operator_indentation": "lp-001.stav-002.cinnost-003.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "",
+              "operator_id": "lp-001.stav-002.cinnost-003.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": "BTestertestujetest Testertestujetest"
+        }
+      ],
+      "pk": [
+        {
+          "id": "lp-001.pk-001",
+          "fieldIds": {
+            "nazev": "lp-001.pk-001.nazev",
+            "zneni": "lp-001.pk-001.zneni",
+            "frekvence": "lp-001.pk-001.frekvence"
+          },
+          "nazev": "PK 1",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "MINUTA"
+        },
+        {
+          "id": "lp-001.pk-002",
+          "fieldIds": {
+            "nazev": "lp-001.pk-002.nazev",
+            "zneni": "lp-001.pk-002.zneni",
+            "frekvence": "lp-001.pk-002.frekvence"
+          },
+          "nazev": "PK 2",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "DEN"
+        }
+      ],
+      "doplnujici_informace": "",
+      "parserWarnings": [
+        "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+        "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+      ],
+      "unstructured": []
+    },
+    {
+      "id": "lp-002",
+      "fieldIds": {
+        "cislo_lp": "lp-002.cislo_lp",
+        "nadpis": "lp-002.nadpis",
+        "doplnujici_informace": "lp-002.doplnujici_informace"
+      },
+      "cislo_lp": "",
+      "nadpis": "Testertestujetest",
+      "lpp": [
+        {
+          "id": "lp-002.lpp-001",
+          "fieldIds": {
+            "nazev": "lp-002.lpp-001.nazev",
+            "zneni": "lp-002.lpp-001.zneni",
+            "platnost": "lp-002.lpp-001.platnost"
+          },
+          "nazev": "LPP",
+          "zneni": "A \tTestertestujetest Testertestujetest",
+          "platnost": {
+            "id": "lp-002.lpp-001.platnost",
+            "fieldIds": {
+              "rezimy": "lp-002.lpp-001.platnost.rezimy",
+              "doplnujici_text": "lp-002.lpp-001.platnost.doplnujici_text",
+              "exportovana_hodnota": "lp-002.lpp-001.platnost.exportovana_hodnota"
+            },
+            "rezimy": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "doplnujici_text": "",
+            "exportovana_hodnota": "Režim 1, 2, 3, 5",
+            "raw": "1,2,3,5",
+            "structured": true,
+            "unstructured": ""
+          }
+        }
+      ],
+      "cinnosti": [
+        {
+          "id": "lp-002.stav-001",
+          "fieldIds": {
+            "nazev_stavu": "lp-002.stav-001.nazev_stavu",
+            "zneni_stavu": "lp-002.stav-001.zneni_stavu"
+          },
+          "nazev_stavu": "A",
+          "zneni_stavu": "Testertestujetest Testertestujetest",
+          "cinnosti": [
+            {
+              "id": "lp-002.stav-001.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-002.stav-001.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-002.stav-001.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-002.stav-001.cinnost-001.doba_provedeni",
+                "operator": "lp-002.stav-001.cinnost-001.operator",
+                "operator_indentation": "lp-002.stav-001.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "A",
+              "operator_id": "lp-002.stav-001.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-002.stav-001.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-002.stav-001.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-002.stav-001.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-002.stav-001.cinnost-002.doba_provedeni",
+                "operator": "lp-002.stav-001.cinnost-002.operator",
+                "operator_indentation": "lp-002.stav-001.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "",
+              "operator_id": "lp-002.stav-001.cinnost-002.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": ""
+        },
+        {
+          "id": "lp-002.stav-002",
+          "fieldIds": {
+            "nazev_stavu": "lp-002.stav-002.nazev_stavu",
+            "zneni_stavu": "lp-002.stav-002.zneni_stavu"
+          },
+          "nazev_stavu": "BTestertestujetest Testertestujetest",
+          "zneni_stavu": "",
+          "cinnosti": [
+            {
+              "id": "lp-002.stav-002.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-002.stav-002.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-002.stav-002.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-002.stav-002.cinnost-001.doba_provedeni",
+                "operator": "lp-002.stav-002.cinnost-001.operator",
+                "operator_indentation": "lp-002.stav-002.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "A",
+              "operator_id": "lp-002.stav-002.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-002.stav-002.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-002.stav-002.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-002.stav-002.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-002.stav-002.cinnost-002.doba_provedeni",
+                "operator": "lp-002.stav-002.cinnost-002.operator",
+                "operator_indentation": "lp-002.stav-002.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "MINUTA",
+              "operator": "NEBO",
+              "operator_id": "lp-002.stav-002.cinnost-002.operator",
+              "operator_indentation": 3
+            },
+            {
+              "id": "lp-002.stav-002.cinnost-003",
+              "fieldIds": {
+                "poradove_cislo": "lp-002.stav-002.cinnost-003.poradove_cislo",
+                "zneni_cinnosti": "lp-002.stav-002.cinnost-003.zneni_cinnosti",
+                "doba_provedeni": "lp-002.stav-002.cinnost-003.doba_provedeni",
+                "operator": "lp-002.stav-002.cinnost-003.operator",
+                "operator_indentation": "lp-002.stav-002.cinnost-003.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "",
+              "operator_id": "lp-002.stav-002.cinnost-003.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": "BTestertestujetest Testertestujetest"
+        }
+      ],
+      "pk": [
+        {
+          "id": "lp-002.pk-001",
+          "fieldIds": {
+            "nazev": "lp-002.pk-001.nazev",
+            "zneni": "lp-002.pk-001.zneni",
+            "frekvence": "lp-002.pk-001.frekvence"
+          },
+          "nazev": "PK 1",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "MINUTA"
+        },
+        {
+          "id": "lp-002.pk-002",
+          "fieldIds": {
+            "nazev": "lp-002.pk-002.nazev",
+            "zneni": "lp-002.pk-002.zneni",
+            "frekvence": "lp-002.pk-002.frekvence"
+          },
+          "nazev": "PK 2",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "DEN"
+        }
+      ],
+      "doplnujici_informace": "",
+      "parserWarnings": [
+        "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+        "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+      ],
+      "unstructured": []
+    },
+    {
+      "id": "lp-003",
+      "fieldIds": {
+        "cislo_lp": "lp-003.cislo_lp",
+        "nadpis": "lp-003.nadpis",
+        "doplnujici_informace": "lp-003.doplnujici_informace"
+      },
+      "cislo_lp": "",
+      "nadpis": "Testertestujetest",
+      "lpp": [
+        {
+          "id": "lp-003.lpp-001",
+          "fieldIds": {
+            "nazev": "lp-003.lpp-001.nazev",
+            "zneni": "lp-003.lpp-001.zneni",
+            "platnost": "lp-003.lpp-001.platnost"
+          },
+          "nazev": "LPP",
+          "zneni": "A \tTestertestujetest Testertestujetest",
+          "platnost": {
+            "id": "lp-003.lpp-001.platnost",
+            "fieldIds": {
+              "rezimy": "lp-003.lpp-001.platnost.rezimy",
+              "doplnujici_text": "lp-003.lpp-001.platnost.doplnujici_text",
+              "exportovana_hodnota": "lp-003.lpp-001.platnost.exportovana_hodnota"
+            },
+            "rezimy": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "doplnujici_text": "",
+            "exportovana_hodnota": "Režim 1, 2, 3, 5",
+            "raw": "1,2,3,5",
+            "structured": true,
+            "unstructured": ""
+          }
+        }
+      ],
+      "cinnosti": [
+        {
+          "id": "lp-003.stav-001",
+          "fieldIds": {
+            "nazev_stavu": "lp-003.stav-001.nazev_stavu",
+            "zneni_stavu": "lp-003.stav-001.zneni_stavu"
+          },
+          "nazev_stavu": "A",
+          "zneni_stavu": "Testertestujetest Testertestujetest",
+          "cinnosti": [
+            {
+              "id": "lp-003.stav-001.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-003.stav-001.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-003.stav-001.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-003.stav-001.cinnost-001.doba_provedeni",
+                "operator": "lp-003.stav-001.cinnost-001.operator",
+                "operator_indentation": "lp-003.stav-001.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "",
+              "operator_id": "lp-003.stav-001.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-003.stav-001.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-003.stav-001.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-003.stav-001.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-003.stav-001.cinnost-002.doba_provedeni",
+                "operator": "lp-003.stav-001.cinnost-002.operator",
+                "operator_indentation": "lp-003.stav-001.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "",
+              "operator_id": "lp-003.stav-001.cinnost-002.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": ""
+        },
+        {
+          "id": "lp-003.stav-002",
+          "fieldIds": {
+            "nazev_stavu": "lp-003.stav-002.nazev_stavu",
+            "zneni_stavu": "lp-003.stav-002.zneni_stavu"
+          },
+          "nazev_stavu": "BTestertestujetest Testertestujetest",
+          "zneni_stavu": "",
+          "cinnosti": [
+            {
+              "id": "lp-003.stav-002.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-003.stav-002.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-003.stav-002.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-003.stav-002.cinnost-001.doba_provedeni",
+                "operator": "lp-003.stav-002.cinnost-001.operator",
+                "operator_indentation": "lp-003.stav-002.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "",
+              "operator_id": "lp-003.stav-002.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-003.stav-002.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-003.stav-002.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-003.stav-002.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-003.stav-002.cinnost-002.doba_provedeni",
+                "operator": "lp-003.stav-002.cinnost-002.operator",
+                "operator_indentation": "lp-003.stav-002.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "MINUTA",
+              "operator": "",
+              "operator_id": "lp-003.stav-002.cinnost-002.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-003.stav-002.cinnost-003",
+              "fieldIds": {
+                "poradove_cislo": "lp-003.stav-002.cinnost-003.poradove_cislo",
+                "zneni_cinnosti": "lp-003.stav-002.cinnost-003.zneni_cinnosti",
+                "doba_provedeni": "lp-003.stav-002.cinnost-003.doba_provedeni",
+                "operator": "lp-003.stav-002.cinnost-003.operator",
+                "operator_indentation": "lp-003.stav-002.cinnost-003.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "",
+              "operator_id": "lp-003.stav-002.cinnost-003.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": "BTestertestujetest Testertestujetest"
+        }
+      ],
+      "pk": [
+        {
+          "id": "lp-003.pk-001",
+          "fieldIds": {
+            "nazev": "lp-003.pk-001.nazev",
+            "zneni": "lp-003.pk-001.zneni",
+            "frekvence": "lp-003.pk-001.frekvence"
+          },
+          "nazev": "PK 1",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "MINUTA"
+        },
+        {
+          "id": "lp-003.pk-002",
+          "fieldIds": {
+            "nazev": "lp-003.pk-002.nazev",
+            "zneni": "lp-003.pk-002.zneni",
+            "frekvence": "lp-003.pk-002.frekvence"
+          },
+          "nazev": "PK 2",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "DEN"
+        }
+      ],
+      "doplnujici_informace": "",
+      "parserWarnings": [
+        "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+        "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+      ],
+      "unstructured": []
+    },
+    {
+      "id": "lp-004",
+      "fieldIds": {
+        "cislo_lp": "lp-004.cislo_lp",
+        "nadpis": "lp-004.nadpis",
+        "doplnujici_informace": "lp-004.doplnujici_informace"
+      },
+      "cislo_lp": "",
+      "nadpis": "Testertestujetest",
+      "lpp": [
+        {
+          "id": "lp-004.lpp-001",
+          "fieldIds": {
+            "nazev": "lp-004.lpp-001.nazev",
+            "zneni": "lp-004.lpp-001.zneni",
+            "platnost": "lp-004.lpp-001.platnost"
+          },
+          "nazev": "LPP",
+          "zneni": "A \tTestertestujetest Testertestujetest",
+          "platnost": {
+            "id": "lp-004.lpp-001.platnost",
+            "fieldIds": {
+              "rezimy": "lp-004.lpp-001.platnost.rezimy",
+              "doplnujici_text": "lp-004.lpp-001.platnost.doplnujici_text",
+              "exportovana_hodnota": "lp-004.lpp-001.platnost.exportovana_hodnota"
+            },
+            "rezimy": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "doplnujici_text": "",
+            "exportovana_hodnota": "Režim 1, 2, 3, 5",
+            "raw": "1,2,3,5",
+            "structured": true,
+            "unstructured": ""
+          }
+        }
+      ],
+      "cinnosti": [
+        {
+          "id": "lp-004.stav-001",
+          "fieldIds": {
+            "nazev_stavu": "lp-004.stav-001.nazev_stavu",
+            "zneni_stavu": "lp-004.stav-001.zneni_stavu"
+          },
+          "nazev_stavu": "A",
+          "zneni_stavu": "Testertestujetest Testertestujetest",
+          "cinnosti": [
+            {
+              "id": "lp-004.stav-001.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-004.stav-001.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-004.stav-001.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-004.stav-001.cinnost-001.doba_provedeni",
+                "operator": "lp-004.stav-001.cinnost-001.operator",
+                "operator_indentation": "lp-004.stav-001.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "A",
+              "operator_id": "lp-004.stav-001.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-004.stav-001.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-004.stav-001.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-004.stav-001.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-004.stav-001.cinnost-002.doba_provedeni",
+                "operator": "lp-004.stav-001.cinnost-002.operator",
+                "operator_indentation": "lp-004.stav-001.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "",
+              "operator_id": "lp-004.stav-001.cinnost-002.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": ""
+        },
+        {
+          "id": "lp-004.stav-002",
+          "fieldIds": {
+            "nazev_stavu": "lp-004.stav-002.nazev_stavu",
+            "zneni_stavu": "lp-004.stav-002.zneni_stavu"
+          },
+          "nazev_stavu": "BTestertestujetest Testertestujetest",
+          "zneni_stavu": "",
+          "cinnosti": [
+            {
+              "id": "lp-004.stav-002.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-004.stav-002.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-004.stav-002.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-004.stav-002.cinnost-001.doba_provedeni",
+                "operator": "lp-004.stav-002.cinnost-001.operator",
+                "operator_indentation": "lp-004.stav-002.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "A",
+              "operator_id": "lp-004.stav-002.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-004.stav-002.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-004.stav-002.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-004.stav-002.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-004.stav-002.cinnost-002.doba_provedeni",
+                "operator": "lp-004.stav-002.cinnost-002.operator",
+                "operator_indentation": "lp-004.stav-002.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "MINUTA",
+              "operator": "NEBO",
+              "operator_id": "lp-004.stav-002.cinnost-002.operator",
+              "operator_indentation": 3
+            },
+            {
+              "id": "lp-004.stav-002.cinnost-003",
+              "fieldIds": {
+                "poradove_cislo": "lp-004.stav-002.cinnost-003.poradove_cislo",
+                "zneni_cinnosti": "lp-004.stav-002.cinnost-003.zneni_cinnosti",
+                "doba_provedeni": "lp-004.stav-002.cinnost-003.doba_provedeni",
+                "operator": "lp-004.stav-002.cinnost-003.operator",
+                "operator_indentation": "lp-004.stav-002.cinnost-003.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "",
+              "operator_id": "lp-004.stav-002.cinnost-003.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": "BTestertestujetest Testertestujetest"
+        }
+      ],
+      "pk": [
+        {
+          "id": "lp-004.pk-001",
+          "fieldIds": {
+            "nazev": "lp-004.pk-001.nazev",
+            "zneni": "lp-004.pk-001.zneni",
+            "frekvence": "lp-004.pk-001.frekvence"
+          },
+          "nazev": "PK 1",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "MINUTA"
+        },
+        {
+          "id": "lp-004.pk-002",
+          "fieldIds": {
+            "nazev": "lp-004.pk-002.nazev",
+            "zneni": "lp-004.pk-002.zneni",
+            "frekvence": "lp-004.pk-002.frekvence"
+          },
+          "nazev": "PK 2",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "DEN"
+        }
+      ],
+      "doplnujici_informace": "",
+      "parserWarnings": [
+        "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+        "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+      ],
+      "unstructured": []
+    },
+    {
+      "id": "lp-005",
+      "fieldIds": {
+        "cislo_lp": "lp-005.cislo_lp",
+        "nadpis": "lp-005.nadpis",
+        "doplnujici_informace": "lp-005.doplnujici_informace"
+      },
+      "cislo_lp": "",
+      "nadpis": "Testertestujetest",
+      "lpp": [
+        {
+          "id": "lp-005.lpp-001",
+          "fieldIds": {
+            "nazev": "lp-005.lpp-001.nazev",
+            "zneni": "lp-005.lpp-001.zneni",
+            "platnost": "lp-005.lpp-001.platnost"
+          },
+          "nazev": "LPP",
+          "zneni": "A \tTestertestujetest Testertestujetest",
+          "platnost": {
+            "id": "lp-005.lpp-001.platnost",
+            "fieldIds": {
+              "rezimy": "lp-005.lpp-001.platnost.rezimy",
+              "doplnujici_text": "lp-005.lpp-001.platnost.doplnujici_text",
+              "exportovana_hodnota": "lp-005.lpp-001.platnost.exportovana_hodnota"
+            },
+            "rezimy": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "doplnujici_text": "",
+            "exportovana_hodnota": "Režim 1, 2, 3, 5",
+            "raw": "1,2,3,5",
+            "structured": true,
+            "unstructured": ""
+          }
+        }
+      ],
+      "cinnosti": [
+        {
+          "id": "lp-005.stav-001",
+          "fieldIds": {
+            "nazev_stavu": "lp-005.stav-001.nazev_stavu",
+            "zneni_stavu": "lp-005.stav-001.zneni_stavu"
+          },
+          "nazev_stavu": "A",
+          "zneni_stavu": "Testertestujetest Testertestujetest",
+          "cinnosti": [
+            {
+              "id": "lp-005.stav-001.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-005.stav-001.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-005.stav-001.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-005.stav-001.cinnost-001.doba_provedeni",
+                "operator": "lp-005.stav-001.cinnost-001.operator",
+                "operator_indentation": "lp-005.stav-001.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "",
+              "operator_id": "lp-005.stav-001.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-005.stav-001.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-005.stav-001.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-005.stav-001.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-005.stav-001.cinnost-002.doba_provedeni",
+                "operator": "lp-005.stav-001.cinnost-002.operator",
+                "operator_indentation": "lp-005.stav-001.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "",
+              "operator_id": "lp-005.stav-001.cinnost-002.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": ""
+        },
+        {
+          "id": "lp-005.stav-002",
+          "fieldIds": {
+            "nazev_stavu": "lp-005.stav-002.nazev_stavu",
+            "zneni_stavu": "lp-005.stav-002.zneni_stavu"
+          },
+          "nazev_stavu": "BTestertestujetest Testertestujetest",
+          "zneni_stavu": "",
+          "cinnosti": [
+            {
+              "id": "lp-005.stav-002.cinnost-001",
+              "fieldIds": {
+                "poradove_cislo": "lp-005.stav-002.cinnost-001.poradove_cislo",
+                "zneni_cinnosti": "lp-005.stav-002.cinnost-001.zneni_cinnosti",
+                "doba_provedeni": "lp-005.stav-002.cinnost-001.doba_provedeni",
+                "operator": "lp-005.stav-002.cinnost-001.operator",
+                "operator_indentation": "lp-005.stav-002.cinnost-001.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "HODINA",
+              "operator": "",
+              "operator_id": "lp-005.stav-002.cinnost-001.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-005.stav-002.cinnost-002",
+              "fieldIds": {
+                "poradove_cislo": "lp-005.stav-002.cinnost-002.poradove_cislo",
+                "zneni_cinnosti": "lp-005.stav-002.cinnost-002.zneni_cinnosti",
+                "doba_provedeni": "lp-005.stav-002.cinnost-002.doba_provedeni",
+                "operator": "lp-005.stav-002.cinnost-002.operator",
+                "operator_indentation": "lp-005.stav-002.cinnost-002.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "MINUTA",
+              "operator": "",
+              "operator_id": "lp-005.stav-002.cinnost-002.operator",
+              "operator_indentation": 1
+            },
+            {
+              "id": "lp-005.stav-002.cinnost-003",
+              "fieldIds": {
+                "poradove_cislo": "lp-005.stav-002.cinnost-003.poradove_cislo",
+                "zneni_cinnosti": "lp-005.stav-002.cinnost-003.zneni_cinnosti",
+                "doba_provedeni": "lp-005.stav-002.cinnost-003.doba_provedeni",
+                "operator": "lp-005.stav-002.cinnost-003.operator",
+                "operator_indentation": "lp-005.stav-002.cinnost-003.operator_indentation"
+              },
+              "zneni_cinnosti": "Testertestujetest",
+              "doba_provedeni": "DEN",
+              "operator": "",
+              "operator_id": "lp-005.stav-002.cinnost-003.operator",
+              "operator_indentation": 1
+            }
+          ],
+          "unstructured": "BTestertestujetest Testertestujetest"
+        }
+      ],
+      "pk": [
+        {
+          "id": "lp-005.pk-001",
+          "fieldIds": {
+            "nazev": "lp-005.pk-001.nazev",
+            "zneni": "lp-005.pk-001.zneni",
+            "frekvence": "lp-005.pk-001.frekvence"
+          },
+          "nazev": "PK 1",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "MINUTA"
+        },
+        {
+          "id": "lp-005.pk-002",
+          "fieldIds": {
+            "nazev": "lp-005.pk-002.nazev",
+            "zneni": "lp-005.pk-002.zneni",
+            "frekvence": "lp-005.pk-002.frekvence"
+          },
+          "nazev": "PK 2",
+          "zneni": "Testertestujetest Testertestujetest Testertestujetest Testertestujetest Testertestujetest",
+          "frekvence": "DEN"
+        }
+      ],
+      "doplnujici_informace": "",
+      "parserWarnings": [
+        "Číslo LP nebylo ve zdroji jednoznačně nalezeno; pole je připravené k ručnímu doplnění.",
+        "Stav 'BTestertestujetest Testertestujetest' nemá jednoznačný oddělovač názvu a znění; uložen jako nestrukturovaný název."
+      ],
+      "unstructured": []
+    }
+  ],
+  "parserWarnings": []
+}
