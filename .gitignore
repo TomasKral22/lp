@@ -3,5 +3,6 @@ dist/
 *.log
 *.zip
 *.png
+*_soubory/
 .DS_Store
 Thumbs.db

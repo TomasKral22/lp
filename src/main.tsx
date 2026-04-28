@@ -26,6 +26,8 @@ import {
   ListTree,
   Plus,
   Save,
+  Settings,
+  Wrench,
 } from "lucide-react";
 import initialData from "../data/lp-data.json";
 import "./styles.css";
@@ -56,6 +58,30 @@ type DocumentNode<T = any> = {
 
 type Lp = any;
 type Reference = { id?: string; targetId?: string; valid?: boolean };
+type AppMode = "document" | "builder";
+type BuilderComponentType = "text" | "textarea" | "richText" | "select" | "checkbox" | "date" | "number";
+type BuilderFunctionKey = "stableIds" | "exportHtml" | "exportJson" | "numbering" | "references" | "validation";
+type BuilderField = {
+  id: string;
+  key: string;
+  label: string;
+  component: BuilderComponentType;
+  required: boolean;
+  options: string;
+};
+type BuilderSection = {
+  id: string;
+  title: string;
+  description: string;
+  fields: BuilderField[];
+};
+type EditorDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  functions: BuilderFunctionKey[];
+  sections: BuilderSection[];
+};
 
 type AppState = {
   root: DocumentNode;
@@ -78,6 +104,7 @@ type AppState = {
 };
 
 const STORAGE_KEY = "lp-tree-editor-structure-v2";
+const BUILDER_STORAGE_KEY = "lp-editor-builder-definitions-v1";
 const OPERATOR_INDENT_SPACES: Record<number, number> = { 1: 0, 2: 4, 3: 8 };
 const lpSchema = z.object({
   id: z.string(),
@@ -87,6 +114,89 @@ const lpSchema = z.object({
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const clone = <T,>(value: T): T => structuredClone(value);
+
+const componentRegistry: Array<{ type: BuilderComponentType; label: string; description: string }> = [
+  { type: "text", label: "Text", description: "Jednoradkovy textovy vstup." },
+  { type: "textarea", label: "Vice radku", description: "Delsi text se zachovanim odradkovani." },
+  { type: "richText", label: "Rich text", description: "Formatovany obsah vcetne tabulek a obrazku." },
+  { type: "select", label: "Vyber + vlastni", description: "Ciselnik s moznosti zadat vlastni hodnotu." },
+  { type: "checkbox", label: "Ano / ne", description: "Binarnarni hodnota." },
+  { type: "date", label: "Datum", description: "Datumovy vstup." },
+  { type: "number", label: "Cislo", description: "Ciselna hodnota." },
+];
+
+const functionRegistry: Array<{ key: BuilderFunctionKey; label: string; description: string }> = [
+  { key: "stableIds", label: "Stabilni ID", description: "Kazde pole i zaznam ma technicke ID pro API a odkazy." },
+  { key: "numbering", label: "Cislovani", description: "Prezencni/exportni cisla se prepocitaji podle poradi." },
+  { key: "references", label: "Odkazy", description: "Atributy lze adresovat pres API bez zahlceni UI." },
+  { key: "validation", label: "Validace", description: "Povinna pole a pravidla pred ulozenim/exportem." },
+  { key: "exportHtml", label: "Export HTML", description: "Export struktury jako rekonstruovatelny HTML dokument." },
+  { key: "exportJson", label: "Export JSON", description: "Export dat i definice editoru pro dalsi zpracovani." },
+];
+
+const createField = (label = "Nove pole"): BuilderField => ({
+  id: uid("field"),
+  key: label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "pole",
+  label,
+  component: "text",
+  required: false,
+  options: "",
+});
+
+const createSection = (title = "Nova sekce"): BuilderSection => ({
+  id: uid("section"),
+  title,
+  description: "",
+  fields: [createField("Nazev")],
+});
+
+const createEditorDefinition = (name = "Novy editor"): EditorDefinition => ({
+  id: uid("editor"),
+  name,
+  description: "Konfigurovatelny editor slozeny z predpripravenych komponent a funkci.",
+  functions: ["stableIds", "exportJson"],
+  sections: [createSection("Zakladni udaje")],
+});
+
+function loadEditorDefinitions(): EditorDefinition[] {
+  const saved = localStorage.getItem(BUILDER_STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch {
+      localStorage.removeItem(BUILDER_STORAGE_KEY);
+    }
+  }
+  return [
+    {
+      ...createEditorDefinition("Univerzalni dokumentovy editor"),
+      id: "editor-general-documents",
+      description: "Startovni konfigurace pro dalsi dokumenty: sekce, pole, rich-text a exporty.",
+      functions: ["stableIds", "references", "validation", "exportHtml", "exportJson"],
+      sections: [
+        {
+          id: "section-basic",
+          title: "Identifikace dokumentu",
+          description: "Zakladni metadata spolecna pro dokument.",
+          fields: [
+            { ...createField("Cislo dokumentu"), id: "field-doc-number", key: "cislo_dokumentu", required: true },
+            { ...createField("Nazev dokumentu"), id: "field-doc-title", key: "nazev_dokumentu", required: true },
+          ],
+        },
+        {
+          id: "section-content",
+          title: "Obsah",
+          description: "Hlavni editovatelny obsah.",
+          fields: [
+            { ...createField("Text kapitoly"), id: "field-rich-content", key: "html_obsah", component: "richText" },
+            { ...createField("Frekvence"), id: "field-frequency", key: "frekvence", component: "select", options: "1x denne\n1x tydne\n1x mesicne\npri zmene" },
+          ],
+        },
+      ],
+    },
+  ];
+}
 
 function baseNode(type: NodeType, title: string, data: any, parentId: string | null): DocumentNode {
   return { id: data?.id || uid(type), parent_id: parentId, type, order: 1, number: "", title, children: [], data };
@@ -385,6 +495,7 @@ const useDocStore = create<AppState>((set, get) => ({
 }));
 
 function App() {
+  const [mode, setMode] = React.useState<AppMode>("document");
   const { root, selectedId, reorderSiblings } = useDocStore();
   const selected = findNode(root, selectedId) || root.children[0];
   const visible = flattenVisible(root, useDocStore.getState().collapsed);
@@ -395,8 +506,8 @@ function App() {
 
   return (
     <div className="app-shell">
-      <TopToolbar />
-      <div className="layout">
+      <TopToolbar mode={mode} onModeChange={setMode} />
+      {mode === "builder" ? <BuilderWorkspace /> : <div className="layout">
         <aside className="sidebar">
           <div className="panel-head">
             <div className="panel-title"><ListTree size={18} /> Strom dokumentu</div>
@@ -410,12 +521,12 @@ function App() {
         </aside>
         <main className="main-pane">{selected ? <NodeDetail node={selected} /> : null}</main>
         <RightPanel node={selected} />
-      </div>
+      </div>}
     </div>
   );
 }
 
-function TopToolbar() {
+function TopToolbar({ mode, onModeChange }: { mode: AppMode; onModeChange: (mode: AppMode) => void }) {
   const { selectedId, addChapter, addLp, save, root } = useDocStore();
   const exportHtml = () => download("lp-export.html", buildExportHtml(root), "text/html;charset=utf-8");
   const exportDoc = () => download("lp-export.doc", buildExportHtml(root), "application/msword;charset=utf-8");
@@ -423,19 +534,208 @@ function TopToolbar() {
   return (
     <header className="topbar">
       <div className="brand">
-        <strong>Editor LP</strong>
-        <span>Stromový dokumentový editor</span>
+        <strong>{mode === "document" ? "Editor LP" : "Builder editoru"}</strong>
+        <span>{mode === "document" ? "Stromovy dokumentovy editor" : "Skladani vlastnich editoru z komponent a funkci"}</span>
       </div>
       <div className="toolbar">
-        <button onClick={() => addChapter("after", selectedId)}><Plus size={16} /> Kapitola</button>
-        <button className="primary" onClick={() => addLp("after", selectedId)}><Plus size={16} /> LP</button>
-        <button onClick={save}><Save size={16} /> Uložit</button>
-        <button onClick={exportJson}><Download size={16} /> JSON</button>
-        <button onClick={exportHtml}><Download size={16} /> HTML</button>
-        <button onClick={exportDoc}><Download size={16} /> DOC</button>
+        <div className="mode-switch">
+          <button className={mode === "document" ? "active" : ""} onClick={() => onModeChange("document")}><FileText size={16} /> Dokument</button>
+          <button className={mode === "builder" ? "active" : ""} onClick={() => onModeChange("builder")}><Settings size={16} /> Builder</button>
+        </div>
+        {mode === "document" ? <>
+          <button onClick={() => addChapter("after", selectedId)}><Plus size={16} /> Kapitola</button>
+          <button className="primary" onClick={() => addLp("after", selectedId)}><Plus size={16} /> LP</button>
+          <button onClick={save}><Save size={16} /> Uložit</button>
+          <button onClick={exportJson}><Download size={16} /> JSON</button>
+          <button onClick={exportHtml}><Download size={16} /> HTML</button>
+          <button onClick={exportDoc}><Download size={16} /> DOC</button>
+        </> : null}
       </div>
     </header>
   );
+}
+
+function BuilderWorkspace() {
+  const [definitions, setDefinitions] = React.useState<EditorDefinition[]>(loadEditorDefinitions);
+  const [selectedId, setSelectedId] = React.useState(definitions[0]?.id || "");
+  const selected = definitions.find((definition) => definition.id === selectedId) || definitions[0];
+
+  const persist = (next: EditorDefinition[]) => {
+    setDefinitions(next);
+    localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(next));
+  };
+  const updateSelected = (updater: (definition: EditorDefinition) => void) => {
+    persist(definitions.map((definition) => {
+      if (definition.id !== selected.id) return definition;
+      const copy = clone(definition);
+      updater(copy);
+      return copy;
+    }));
+  };
+  const addDefinition = () => {
+    const definition = createEditorDefinition(`Editor ${definitions.length + 1}`);
+    persist([...definitions, definition]);
+    setSelectedId(definition.id);
+  };
+  const duplicateDefinition = () => {
+    const copy = clone(selected);
+    copy.id = uid("editor");
+    copy.name = `${copy.name} - kopie`;
+    copy.sections = copy.sections.map((section) => ({
+      ...section,
+      id: uid("section"),
+      fields: section.fields.map((field) => ({ ...field, id: uid("field") })),
+    }));
+    persist([...definitions, copy]);
+    setSelectedId(copy.id);
+  };
+  const deleteDefinition = () => {
+    if (definitions.length <= 1) return alert("Musi zustat alespon jedna definice editoru.");
+    if (!confirm("Opravdu smazat definici editoru?")) return;
+    const next = definitions.filter((definition) => definition.id !== selected.id);
+    persist(next);
+    setSelectedId(next[0].id);
+  };
+  const exportDefinition = () => download(`${selected.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.editor.json`, JSON.stringify(selected, null, 2), "application/json;charset=utf-8");
+
+  return (
+    <div className="builder-layout">
+      <aside className="builder-sidebar">
+        <div className="panel-head">
+          <div className="panel-title"><Wrench size={18} /> Definice editoru</div>
+          <p>Vyber editor, uprav schema a pouzij ho pro dalsi dokumenty.</p>
+        </div>
+        <div className="builder-list">
+          {definitions.map((definition) => (
+            <button key={definition.id} className={definition.id === selected.id ? "builder-item active" : "builder-item"} onClick={() => setSelectedId(definition.id)}>
+              <strong>{definition.name}</strong>
+              <span>{definition.sections.length} sekci, {definition.sections.reduce((sum, section) => sum + section.fields.length, 0)} poli</span>
+            </button>
+          ))}
+        </div>
+        <div className="builder-actions">
+          <button className="primary" onClick={addDefinition}><Plus size={16} /> Novy editor</button>
+          <button onClick={duplicateDefinition}><Copy size={16} /> Duplikovat</button>
+          <button className="danger-text" onClick={deleteDefinition}>Smazat</button>
+        </div>
+      </aside>
+
+      <main className="builder-main">
+        <Card title="Zaklad editoru" badge="SCHEMA">
+          <div className="grid-2">
+            <Field label="Nazev editoru" value={selected.name} onChange={(value) => updateSelected((definition) => { definition.name = value; })} />
+            <Textarea label="Popis" value={selected.description} onChange={(value) => updateSelected((definition) => { definition.description = value; })} />
+          </div>
+        </Card>
+
+        <Card title="Predprogramovane funkce" badge="REGISTRY">
+          <div className="function-grid">
+            {functionRegistry.map((item) => {
+              const active = selected.functions.includes(item.key);
+              return (
+                <button key={item.key} className={active ? "function-tile active" : "function-tile"} onClick={() => updateSelected((definition) => {
+                  definition.functions = active ? definition.functions.filter((key) => key !== item.key) : [...definition.functions, item.key];
+                })}>
+                  <strong>{item.label}</strong>
+                  <span>{item.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        <BuilderSections definition={selected} update={updateSelected} />
+      </main>
+
+      <aside className="builder-preview">
+        <div className="panel-head">
+          <div className="panel-title"><FileText size={18} /> Runtime nahled</div>
+          <p>Takto se bude editor vykreslovat z ulozene definice.</p>
+        </div>
+        <div className="right-content">
+          <RuntimePreview definition={selected} />
+          <button onClick={exportDefinition}><Download size={16} /> Export definice JSON</button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function BuilderSections({ definition, update }: { definition: EditorDefinition; update: (updater: (definition: EditorDefinition) => void) => void }) {
+  return (
+    <section className="detail-stack">
+      {definition.sections.map((section, sectionIndex) => (
+        <Card key={section.id} title={section.title || `Sekce ${sectionIndex + 1}`} badge="SEKCE">
+          <div className="grid-2">
+            <Field label="Nazev sekce" value={section.title} onChange={(value) => update((definition) => { definition.sections[sectionIndex].title = value; })} />
+            <Textarea label="Popis sekce" value={section.description} onChange={(value) => update((definition) => { definition.sections[sectionIndex].description = value; })} />
+          </div>
+          <div className="builder-fields">
+            {section.fields.map((field, fieldIndex) => (
+              <div className="builder-field-row" key={field.id}>
+                <Field label="Popisek" value={field.label} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].label = value; })} />
+                <Field label="Technicky klic" value={field.key} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].key = value; })} />
+                <label className="field">
+                  <span>Komponenta</span>
+                  <select value={field.component} onChange={(event) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].component = event.target.value as BuilderComponentType; })}>
+                    {componentRegistry.map((component) => <option key={component.type} value={component.type}>{component.label}</option>)}
+                  </select>
+                </label>
+                <Textarea label="Ciselnik / volby" value={field.options} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].options = value; })} />
+                <label className="checkline">
+                  <input type="checkbox" checked={field.required} onChange={(event) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].required = event.target.checked; })} />
+                  Povinne
+                </label>
+                <button className="danger-text" onClick={() => update((definition) => { definition.sections[sectionIndex].fields.splice(fieldIndex, 1); })}>Smazat pole</button>
+              </div>
+            ))}
+          </div>
+          <div className="inline-actions">
+            <button onClick={() => update((definition) => { definition.sections[sectionIndex].fields.push(createField(`Pole ${section.fields.length + 1}`)); })}><Plus size={16} /> Pridat pole</button>
+            <button className="danger-text" onClick={() => update((definition) => { definition.sections.splice(sectionIndex, 1); })}>Smazat sekci</button>
+          </div>
+        </Card>
+      ))}
+      <button className="primary wide-action" onClick={() => update((definition) => { definition.sections.push(createSection(`Sekce ${definition.sections.length + 1}`)); })}><Plus size={16} /> Pridat sekci</button>
+    </section>
+  );
+}
+
+function RuntimePreview({ definition }: { definition: EditorDefinition }) {
+  const [values, setValues] = React.useState<Record<string, any>>({});
+  const setValue = (key: string, value: any) => setValues((current) => ({ ...current, [key]: value }));
+  return (
+    <div className="runtime-preview">
+      <h2>{definition.name}</h2>
+      <p>{definition.description}</p>
+      <div className="preview-functions">{definition.functions.map((key) => <span className="badge neutral" key={key}>{functionRegistry.find((item) => item.key === key)?.label || key}</span>)}</div>
+      {definition.sections.map((section) => (
+        <section className="preview-section" key={section.id}>
+          <h3>{section.title}</h3>
+          {section.description ? <p>{section.description}</p> : null}
+          {section.fields.map((field) => <RuntimeField key={field.id} field={field} value={values[field.key]} onChange={(value) => setValue(field.key, value)} />)}
+        </section>
+      ))}
+      <details className="schema-preview">
+        <summary>Data nahledu</summary>
+        <pre>{JSON.stringify(values, null, 2)}</pre>
+      </details>
+    </div>
+  );
+}
+
+function RuntimeField({ field, value, onChange }: { field: BuilderField; value: any; onChange: (value: any) => void }) {
+  const datalistId = `${field.id}-options`;
+  if (field.component === "textarea") return <Textarea label={field.label} value={value || ""} onChange={onChange} />;
+  if (field.component === "richText") return <label className="field"><span>{field.label}</span><RichText value={value || ""} onChange={onChange} /></label>;
+  if (field.component === "checkbox") return <label className="checkline"><input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} /> {field.label}</label>;
+  if (field.component === "select") return (
+    <>
+      <Field label={field.label} value={value || ""} list={datalistId} onChange={onChange} />
+      <datalist id={datalistId}>{field.options.split(/\r?\n/).filter(Boolean).map((option) => <option value={option} key={option} />)}</datalist>
+    </>
+  );
+  return <label className="field"><span>{field.label}{field.required ? " *" : ""}</span><input type={field.component === "number" ? "number" : field.component === "date" ? "date" : "text"} value={value || ""} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 function TreeRow({ node, level }: { node: DocumentNode; level: number }) {

@@ -48,6 +48,22 @@ Frontend je React + TypeScript aplikace s:
 - ikonami Lucide React
 - shadcn-like komponentami postavenými lokálně nad CSS proměnnými
 
+## Builder editoru
+
+Aplikace ma druhy rezim `Builder`, ktery slouzi jako zaklad systemu pro tvorbu dalsich editoru pres frontend.
+
+Builder umi:
+
+- vytvorit vice definic editoru
+- skladat editor ze sekci a poli
+- vybirat typ komponenty: text, vice radku, rich-text, select s vlastni hodnotou, checkbox, datum, cislo
+- zapinat predprogramovane funkce: stabilni ID, cislovani, odkazy, validace, HTML export, JSON export
+- zobrazit runtime nahled editoru podle aktualni definice
+- exportovat definici editoru jako JSON
+- ukladat definice do `localStorage`
+
+Soucasny LP editor zustava samostatny rezim `Dokument`. Builder je pripraveny jako obecne jadro, nad kterym lze postupne pridavat importery/parsery pro dalsi typy dokumentu.
+
 ## Import dat
 
 ```powershell
