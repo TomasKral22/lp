@@ -4,7 +4,6 @@ import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { create } from "zustand";
-import { z } from "zod";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -30,6 +29,24 @@ import {
   Wrench,
 } from "lucide-react";
 import initialData from "../data/lp-data.json";
+import {
+  BUILDER_STORAGE_KEY,
+  BuilderComponentType,
+  BuilderField,
+  EditorDefinition,
+  componentRegistry,
+  createEditorDefinition,
+  createField,
+  createSection,
+  evaluateCondition,
+  functionRegistry,
+  getFieldOptions,
+  isFieldRequired,
+  loadEditorDefinitions,
+  normalizeDefinition,
+  validateFieldValue,
+} from "./schema/editorSchema";
+import { collectValidationMessages, createEmptyRuntimeData, renderComputedValue } from "./runtime/runtimeEngine";
 import "./styles.css";
 
 type NodeType =
@@ -59,29 +76,6 @@ type DocumentNode<T = any> = {
 type Lp = any;
 type Reference = { id?: string; targetId?: string; valid?: boolean };
 type AppMode = "document" | "builder";
-type BuilderComponentType = "text" | "textarea" | "richText" | "select" | "checkbox" | "date" | "number";
-type BuilderFunctionKey = "stableIds" | "exportHtml" | "exportJson" | "numbering" | "references" | "validation";
-type BuilderField = {
-  id: string;
-  key: string;
-  label: string;
-  component: BuilderComponentType;
-  required: boolean;
-  options: string;
-};
-type BuilderSection = {
-  id: string;
-  title: string;
-  description: string;
-  fields: BuilderField[];
-};
-type EditorDefinition = {
-  id: string;
-  name: string;
-  description: string;
-  functions: BuilderFunctionKey[];
-  sections: BuilderSection[];
-};
 
 type AppState = {
   root: DocumentNode;
@@ -104,99 +98,10 @@ type AppState = {
 };
 
 const STORAGE_KEY = "lp-tree-editor-structure-v2";
-const BUILDER_STORAGE_KEY = "lp-editor-builder-definitions-v1";
 const OPERATOR_INDENT_SPACES: Record<number, number> = { 1: 0, 2: 4, 3: 8 };
-const lpSchema = z.object({
-  id: z.string(),
-  cislo_lp: z.string().optional(),
-  nadpis: z.string().optional(),
-});
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const clone = <T,>(value: T): T => structuredClone(value);
-
-const componentRegistry: Array<{ type: BuilderComponentType; label: string; description: string }> = [
-  { type: "text", label: "Text", description: "Jednoradkovy textovy vstup." },
-  { type: "textarea", label: "Vice radku", description: "Delsi text se zachovanim odradkovani." },
-  { type: "richText", label: "Rich text", description: "Formatovany obsah vcetne tabulek a obrazku." },
-  { type: "select", label: "Vyber + vlastni", description: "Ciselnik s moznosti zadat vlastni hodnotu." },
-  { type: "checkbox", label: "Ano / ne", description: "Binarnarni hodnota." },
-  { type: "date", label: "Datum", description: "Datumovy vstup." },
-  { type: "number", label: "Cislo", description: "Ciselna hodnota." },
-];
-
-const functionRegistry: Array<{ key: BuilderFunctionKey; label: string; description: string }> = [
-  { key: "stableIds", label: "Stabilni ID", description: "Kazde pole i zaznam ma technicke ID pro API a odkazy." },
-  { key: "numbering", label: "Cislovani", description: "Prezencni/exportni cisla se prepocitaji podle poradi." },
-  { key: "references", label: "Odkazy", description: "Atributy lze adresovat pres API bez zahlceni UI." },
-  { key: "validation", label: "Validace", description: "Povinna pole a pravidla pred ulozenim/exportem." },
-  { key: "exportHtml", label: "Export HTML", description: "Export struktury jako rekonstruovatelny HTML dokument." },
-  { key: "exportJson", label: "Export JSON", description: "Export dat i definice editoru pro dalsi zpracovani." },
-];
-
-const createField = (label = "Nove pole"): BuilderField => ({
-  id: uid("field"),
-  key: label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "pole",
-  label,
-  component: "text",
-  required: false,
-  options: "",
-});
-
-const createSection = (title = "Nova sekce"): BuilderSection => ({
-  id: uid("section"),
-  title,
-  description: "",
-  fields: [createField("Nazev")],
-});
-
-const createEditorDefinition = (name = "Novy editor"): EditorDefinition => ({
-  id: uid("editor"),
-  name,
-  description: "Konfigurovatelny editor slozeny z predpripravenych komponent a funkci.",
-  functions: ["stableIds", "exportJson"],
-  sections: [createSection("Zakladni udaje")],
-});
-
-function loadEditorDefinitions(): EditorDefinition[] {
-  const saved = localStorage.getItem(BUILDER_STORAGE_KEY);
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length) return parsed;
-    } catch {
-      localStorage.removeItem(BUILDER_STORAGE_KEY);
-    }
-  }
-  return [
-    {
-      ...createEditorDefinition("Univerzalni dokumentovy editor"),
-      id: "editor-general-documents",
-      description: "Startovni konfigurace pro dalsi dokumenty: sekce, pole, rich-text a exporty.",
-      functions: ["stableIds", "references", "validation", "exportHtml", "exportJson"],
-      sections: [
-        {
-          id: "section-basic",
-          title: "Identifikace dokumentu",
-          description: "Zakladni metadata spolecna pro dokument.",
-          fields: [
-            { ...createField("Cislo dokumentu"), id: "field-doc-number", key: "cislo_dokumentu", required: true },
-            { ...createField("Nazev dokumentu"), id: "field-doc-title", key: "nazev_dokumentu", required: true },
-          ],
-        },
-        {
-          id: "section-content",
-          title: "Obsah",
-          description: "Hlavni editovatelny obsah.",
-          fields: [
-            { ...createField("Text kapitoly"), id: "field-rich-content", key: "html_obsah", component: "richText" },
-            { ...createField("Frekvence"), id: "field-frequency", key: "frekvence", component: "select", options: "1x denne\n1x tydne\n1x mesicne\npri zmene" },
-          ],
-        },
-      ],
-    },
-  ];
-}
 
 function baseNode(type: NodeType, title: string, data: any, parentId: string | null): DocumentNode {
   return { id: data?.id || uid(type), parent_id: parentId, type, order: 1, number: "", title, children: [], data };
@@ -559,10 +464,12 @@ function BuilderWorkspace() {
   const [definitions, setDefinitions] = React.useState<EditorDefinition[]>(loadEditorDefinitions);
   const [selectedId, setSelectedId] = React.useState(definitions[0]?.id || "");
   const selected = definitions.find((definition) => definition.id === selectedId) || definitions[0];
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const persist = (next: EditorDefinition[]) => {
-    setDefinitions(next);
-    localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(next));
+    const normalized = next.map(normalizeDefinition);
+    setDefinitions(normalized);
+    localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(normalized));
   };
   const updateSelected = (updater: (definition: EditorDefinition) => void) => {
     persist(definitions.map((definition) => {
@@ -597,6 +504,21 @@ function BuilderWorkspace() {
     setSelectedId(next[0].id);
   };
   const exportDefinition = () => download(`${selected.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.editor.json`, JSON.stringify(selected, null, 2), "application/json;charset=utf-8");
+  const importDefinition = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || ""));
+        const imported = normalizeDefinition(parsed);
+        persist([...definitions.filter((definition) => definition.id !== imported.id), imported]);
+        setSelectedId(imported.id);
+      } catch (error) {
+        alert(`JSON definici se nepodarilo nacist: ${error instanceof Error ? error.message : "neznamy problem"}`);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div className="builder-layout">
@@ -616,6 +538,8 @@ function BuilderWorkspace() {
         <div className="builder-actions">
           <button className="primary" onClick={addDefinition}><Plus size={16} /> Novy editor</button>
           <button onClick={duplicateDefinition}><Copy size={16} /> Duplikovat</button>
+          <button onClick={() => fileInputRef.current?.click()}><Download size={16} /> Import JSON</button>
+          <input ref={fileInputRef} className="hidden-input" type="file" accept="application/json,.json" onChange={(event) => importDefinition(event.target.files?.[0])} />
           <button className="danger-text" onClick={deleteDefinition}>Smazat</button>
         </div>
       </aside>
@@ -624,8 +548,18 @@ function BuilderWorkspace() {
         <Card title="Zaklad editoru" badge="SCHEMA">
           <div className="grid-2">
             <Field label="Nazev editoru" value={selected.name} onChange={(value) => updateSelected((definition) => { definition.name = value; })} />
+            <Field label="Verze schema" value={selected.version} onChange={(value) => updateSelected((definition) => { definition.version = value; })} />
             <Textarea label="Popis" value={selected.description} onChange={(value) => updateSelected((definition) => { definition.description = value; })} />
           </div>
+        </Card>
+
+        <Card title="Ciselniky" badge="JSON">
+          <JsonObjectEditor
+            label="Ciselniky editoru"
+            value={selected.dictionaries}
+            emptyValue={{}}
+            onChange={(value) => updateSelected((definition) => { definition.dictionaries = value as Record<string, string[]>; })}
+          />
         </Card>
 
         <Card title="Predprogramovane funkce" badge="REGISTRY">
@@ -655,6 +589,7 @@ function BuilderWorkspace() {
         <div className="right-content">
           <RuntimePreview definition={selected} />
           <button onClick={exportDefinition}><Download size={16} /> Export definice JSON</button>
+          <button onClick={() => download(`${selected.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.runtime-data.json`, JSON.stringify({ editorId: selected.id, schemaVersion: selected.version, data: createEmptyRuntimeData(selected) }, null, 2), "application/json;charset=utf-8")}><Download size={16} /> Prazdna data JSON</button>
         </div>
       </aside>
     </div>
@@ -662,6 +597,17 @@ function BuilderWorkspace() {
 }
 
 function BuilderSections({ definition, update }: { definition: EditorDefinition; update: (updater: (definition: EditorDefinition) => void) => void }) {
+  const setComponent = (sectionIndex: number, fieldIndex: number, component: BuilderComponentType) => update((definition) => {
+    const field = definition.sections[sectionIndex].fields[fieldIndex];
+    field.component = component;
+    if (component === "table" && !field.columns?.length) {
+      field.columns = [createField("Sloupec 1"), createField("Sloupec 2")];
+    }
+    if (component === "repeater" && !field.fields?.length) {
+      field.fields = [createField("Polozka")];
+    }
+    if (component === "select" || component === "multiSelect" || component === "radio") field.allowCustomValue ??= component === "select";
+  });
   return (
     <section className="detail-stack">
       {definition.sections.map((section, sectionIndex) => (
@@ -669,6 +615,7 @@ function BuilderSections({ definition, update }: { definition: EditorDefinition;
           <div className="grid-2">
             <Field label="Nazev sekce" value={section.title} onChange={(value) => update((definition) => { definition.sections[sectionIndex].title = value; })} />
             <Textarea label="Popis sekce" value={section.description} onChange={(value) => update((definition) => { definition.sections[sectionIndex].description = value; })} />
+            <JsonObjectEditor label="Viditelnost sekce visibleWhen" value={section.visibleWhen || null} emptyValue={null} onChange={(value) => update((definition) => { definition.sections[sectionIndex].visibleWhen = value as any; })} />
           </div>
           <div className="builder-fields">
             {section.fields.map((field, fieldIndex) => (
@@ -677,15 +624,34 @@ function BuilderSections({ definition, update }: { definition: EditorDefinition;
                 <Field label="Technicky klic" value={field.key} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].key = value; })} />
                 <label className="field">
                   <span>Komponenta</span>
-                  <select value={field.component} onChange={(event) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].component = event.target.value as BuilderComponentType; })}>
+                  <select value={field.component} onChange={(event) => setComponent(sectionIndex, fieldIndex, event.target.value as BuilderComponentType)}>
                     {componentRegistry.map((component) => <option key={component.type} value={component.type}>{component.label}</option>)}
                   </select>
                 </label>
                 <Textarea label="Ciselnik / volby" value={field.options} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].options = value; })} />
+                <Field label="Slovnik" value={field.dictionary || ""} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].dictionary = value; })} />
                 <label className="checkline">
                   <input type="checkbox" checked={field.required} onChange={(event) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].required = event.target.checked; })} />
                   Povinne
                 </label>
+                <label className="checkline">
+                  <input type="checkbox" checked={Boolean(field.allowCustomValue)} onChange={(event) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].allowCustomValue = event.target.checked; })} />
+                  Vlastni hodnota
+                </label>
+                <JsonObjectEditor label="visibleWhen" value={field.visibleWhen || null} emptyValue={null} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].visibleWhen = value as any; })} />
+                <JsonObjectEditor label="requiredWhen" value={field.requiredWhen || null} emptyValue={null} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].requiredWhen = value as any; })} />
+                <JsonObjectEditor label="validation" value={field.validation || {}} emptyValue={{}} onChange={(value) => update((definition) => { definition.sections[sectionIndex].fields[fieldIndex].validation = value as any; })} />
+                {(field.component === "table" || field.component === "repeater") ? (
+                  <NestedFieldDesigner
+                    title={field.component === "table" ? "Sloupce tabulky" : "Pole opakovatelne polozky"}
+                    fields={field.component === "table" ? field.columns || [] : field.fields || []}
+                    onChange={(fields) => update((definition) => {
+                      const target = definition.sections[sectionIndex].fields[fieldIndex];
+                      if (target.component === "table") target.columns = fields;
+                      else target.fields = fields;
+                    })}
+                  />
+                ) : null}
                 <button className="danger-text" onClick={() => update((definition) => { definition.sections[sectionIndex].fields.splice(fieldIndex, 1); })}>Smazat pole</button>
               </div>
             ))}
@@ -701,19 +667,71 @@ function BuilderSections({ definition, update }: { definition: EditorDefinition;
   );
 }
 
+function NestedFieldDesigner({ title, fields, onChange }: { title: string; fields: BuilderField[]; onChange: (fields: BuilderField[]) => void }) {
+  const updateField = (index: number, patch: Partial<BuilderField>) => onChange(fields.map((field, fieldIndex) => fieldIndex === index ? { ...field, ...patch } : field));
+  return (
+    <div className="nested-designer">
+      <strong>{title}</strong>
+      {fields.map((field, index) => (
+        <div className="nested-field-row" key={field.id}>
+          <Field label="Popisek" value={field.label} onChange={(value) => updateField(index, { label: value })} />
+          <Field label="Klic" value={field.key} onChange={(value) => updateField(index, { key: value })} />
+          <label className="field">
+            <span>Typ</span>
+            <select value={field.component} onChange={(event) => updateField(index, { component: event.target.value as BuilderComponentType })}>
+              {componentRegistry.filter((component) => !["table", "repeater"].includes(component.type)).map((component) => <option key={component.type} value={component.type}>{component.label}</option>)}
+            </select>
+          </label>
+          <button className="danger-text" onClick={() => onChange(fields.filter((_, fieldIndex) => fieldIndex !== index))}>Smazat</button>
+        </div>
+      ))}
+      <button onClick={() => onChange([...fields, createField(`Pole ${fields.length + 1}`)])}><Plus size={16} /> Pridat</button>
+    </div>
+  );
+}
+
+function JsonObjectEditor({ label, value, emptyValue, onChange }: { label: string; value: unknown; emptyValue: unknown; onChange: (value: unknown) => void }) {
+  const [text, setText] = React.useState(JSON.stringify(value ?? emptyValue, null, 2));
+  const [error, setError] = React.useState("");
+  React.useEffect(() => setText(JSON.stringify(value ?? emptyValue, null, 2)), [JSON.stringify(value ?? emptyValue)]);
+  const commit = () => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setError("");
+      onChange(emptyValue);
+      return;
+    }
+    try {
+      onChange(JSON.parse(trimmed));
+      setError("");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Neplatny JSON");
+    }
+  };
+  return (
+    <label className="field json-field">
+      <span>{label}</span>
+      <textarea value={text} onChange={(event) => setText(event.target.value)} onBlur={commit} />
+      {error ? <small className="field-error">{error}</small> : null}
+    </label>
+  );
+}
+
 function RuntimePreview({ definition }: { definition: EditorDefinition }) {
   const [values, setValues] = React.useState<Record<string, any>>({});
   const setValue = (key: string, value: any) => setValues((current) => ({ ...current, [key]: value }));
+  const validationMessages = collectValidationMessages(definition, values);
   return (
     <div className="runtime-preview">
       <h2>{definition.name}</h2>
       <p>{definition.description}</p>
       <div className="preview-functions">{definition.functions.map((key) => <span className="badge neutral" key={key}>{functionRegistry.find((item) => item.key === key)?.label || key}</span>)}</div>
-      {definition.sections.map((section) => (
+      {validationMessages.length ? <div className="validation-box">{validationMessages.map((message) => <p key={message}>{message}</p>)}</div> : null}
+      {definition.sections.filter((section) => evaluateCondition(section.visibleWhen, values)).map((section) => (
         <section className="preview-section" key={section.id}>
           <h3>{section.title}</h3>
           {section.description ? <p>{section.description}</p> : null}
-          {section.fields.map((field) => <RuntimeField key={field.id} field={field} value={values[field.key]} onChange={(value) => setValue(field.key, value)} />)}
+          {section.fields.map((field) => <RuntimeField key={field.id} definition={definition} field={field} values={values} value={values[field.key]} onChange={(value) => setValue(field.key, value)} />)}
         </section>
       ))}
       <details className="schema-preview">
@@ -724,18 +742,98 @@ function RuntimePreview({ definition }: { definition: EditorDefinition }) {
   );
 }
 
-function RuntimeField({ field, value, onChange }: { field: BuilderField; value: any; onChange: (value: any) => void }) {
+function RuntimeField({ definition, field, values, value, onChange }: { definition: EditorDefinition; field: BuilderField; values: Record<string, any>; value: any; onChange: (value: any) => void }) {
+  if (field.hidden || !evaluateCondition(field.visibleWhen, values)) return null;
+  const required = isFieldRequired(field, values);
+  const error = validateFieldValue(field, value, values);
   const datalistId = `${field.id}-options`;
-  if (field.component === "textarea") return <Textarea label={field.label} value={value || ""} onChange={onChange} />;
-  if (field.component === "richText") return <label className="field"><span>{field.label}</span><RichText value={value || ""} onChange={onChange} /></label>;
-  if (field.component === "checkbox") return <label className="checkline"><input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} /> {field.label}</label>;
-  if (field.component === "select") return (
+  const label = `${field.label}${required ? " *" : ""}`;
+  const wrapError = (node: React.ReactNode) => <div className={error ? "runtime-field has-error" : "runtime-field"}>{node}{field.helpText ? <small>{field.helpText}</small> : null}{error ? <small className="field-error">{error}</small> : null}</div>;
+  if (field.component === "textarea") return wrapError(<Textarea label={label} value={value || ""} onChange={onChange} />);
+  if (field.component === "richText") return wrapError(<label className="field"><span>{label}</span><RichText value={value || ""} onChange={onChange} /></label>);
+  if (field.component === "checkbox" || field.component === "toggle") return wrapError(<label className="checkline"><input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} /> {label}</label>);
+  if (field.component === "select") return wrapError(
     <>
-      <Field label={field.label} value={value || ""} list={datalistId} onChange={onChange} />
-      <datalist id={datalistId}>{field.options.split(/\r?\n/).filter(Boolean).map((option) => <option value={option} key={option} />)}</datalist>
-    </>
+      {field.allowCustomValue ? <Field label={label} value={value || ""} list={datalistId} onChange={onChange} /> : (
+        <label className="field"><span>{label}</span><select value={value || ""} onChange={(event) => onChange(event.target.value)}><option value="" />{getFieldOptions(field, definition).map((option) => <option value={option} key={option}>{option}</option>)}</select></label>
+      )}
+      <datalist id={datalistId}>{getFieldOptions(field, definition).map((option) => <option value={option} key={option} />)}</datalist>
+    </>,
   );
-  return <label className="field"><span>{field.label}{field.required ? " *" : ""}</span><input type={field.component === "number" ? "number" : field.component === "date" ? "date" : "text"} value={value || ""} onChange={(event) => onChange(event.target.value)} /></label>;
+  if (field.component === "multiSelect") {
+    const selected = Array.isArray(value) ? value : [];
+    return wrapError(<div className="field"><span>{label}</span><div className="multi-options">{getFieldOptions(field, definition).map((option) => <label className="checkline" key={option}><input type="checkbox" checked={selected.includes(option)} onChange={(event) => onChange(event.target.checked ? [...selected, option] : selected.filter((item: string) => item !== option))} /> {option}</label>)}</div></div>);
+  }
+  if (field.component === "radio") {
+    return wrapError(<div className="field"><span>{label}</span><div className="multi-options">{getFieldOptions(field, definition).map((option) => <label className="checkline" key={option}><input type="radio" name={field.id} checked={value === option} onChange={() => onChange(option)} /> {option}</label>)}</div></div>);
+  }
+  if (field.component === "table") return wrapError(<RuntimeTable definition={definition} field={field} values={values} value={value || []} onChange={onChange} />);
+  if (field.component === "repeater") return wrapError(<RuntimeRepeater definition={definition} field={field} values={values} value={value || []} onChange={onChange} />);
+  if (field.component === "computed") return wrapError(<label className="field"><span>{label}</span><input readOnly value={renderComputedValue(field, values)} /></label>);
+  if (field.component === "json") return wrapError(<JsonRuntimeField label={label} value={value} onChange={onChange} />);
+  if (field.component === "image") return wrapError(<label className="field"><span>{label}</span><input value={value || ""} placeholder={field.placeholder || "URL obrazku"} onChange={(event) => onChange(event.target.value)} />{value ? <img className="runtime-image" src={value} alt="" /> : null}</label>);
+  const inputType = field.component === "number" || field.component === "integer" || field.component === "decimal" ? "number" : field.component === "date" ? "date" : field.component === "datetime" ? "datetime-local" : field.component === "time" ? "time" : field.component === "email" ? "email" : field.component === "url" ? "url" : "text";
+  return wrapError(<label className="field"><span>{label}</span><input type={inputType} value={value || ""} placeholder={field.placeholder || ""} readOnly={field.readonly} onChange={(event) => onChange(event.target.value)} /></label>);
+}
+
+function RuntimeTable({ definition, field, values, value, onChange }: { definition: EditorDefinition; field: BuilderField; values: Record<string, any>; value: Array<Record<string, any>>; onChange: (value: any) => void }) {
+  const columns = field.columns || [];
+  const addRow = () => onChange([...value, Object.fromEntries(columns.map((column) => [column.key, column.defaultValue ?? ""]))]);
+  return (
+    <div className="runtime-table-wrap">
+      <div className="table-scroll">
+        <table className="runtime-table">
+          <thead><tr>{columns.map((column) => <th key={column.id}>{column.label}</th>)}<th /></tr></thead>
+          <tbody>
+            {value.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {columns.map((column) => (
+                  <td key={column.id}>
+                    <RuntimeField definition={definition} field={{ ...column, visibleWhen: null }} values={{ ...values, ...row }} value={row[column.key]} onChange={(next) => onChange(value.map((item, index) => index === rowIndex ? { ...item, [column.key]: next } : item))} />
+                  </td>
+                ))}
+                <td><button className="danger-text" onClick={() => onChange(value.filter((_, index) => index !== rowIndex))}>Smazat</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button onClick={addRow}><Plus size={16} /> Pridat radek</button>
+    </div>
+  );
+}
+
+function RuntimeRepeater({ definition, field, values, value, onChange }: { definition: EditorDefinition; field: BuilderField; values: Record<string, any>; value: Array<Record<string, any>>; onChange: (value: any) => void }) {
+  const fields = field.fields || [];
+  const addItem = () => onChange([...value, Object.fromEntries(fields.map((item) => [item.key, item.defaultValue ?? ""]))]);
+  return (
+    <div className="runtime-repeater">
+      <strong>{field.label}</strong>
+      {value.map((item, itemIndex) => (
+        <div className="repeater-item" key={itemIndex}>
+          {fields.map((child) => (
+            <RuntimeField key={child.id} definition={definition} field={child} values={{ ...values, ...item }} value={item[child.key]} onChange={(next) => onChange(value.map((entry, index) => index === itemIndex ? { ...entry, [child.key]: next } : entry))} />
+          ))}
+          <button className="danger-text" onClick={() => onChange(value.filter((_, index) => index !== itemIndex))}>Smazat polozku</button>
+        </div>
+      ))}
+      <button onClick={addItem}><Plus size={16} /> Pridat polozku</button>
+    </div>
+  );
+}
+
+function JsonRuntimeField({ label, value, onChange }: { label: string; value: unknown; onChange: (value: unknown) => void }) {
+  const [text, setText] = React.useState(value ? JSON.stringify(value, null, 2) : "{}");
+  const [error, setError] = React.useState("");
+  const commit = () => {
+    try {
+      onChange(JSON.parse(text || "{}"));
+      setError("");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Neplatny JSON");
+    }
+  };
+  return <label className="field json-field"><span>{label}</span><textarea value={text} onChange={(event) => setText(event.target.value)} onBlur={commit} />{error ? <small className="field-error">{error}</small> : null}</label>;
 }
 
 function TreeRow({ node, level }: { node: DocumentNode; level: number }) {

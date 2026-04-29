@@ -328,6 +328,10 @@ textarea {
   resize: vertical;
 }
 
+.hidden-input {
+  display: none;
+}
+
 .metadata-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -578,13 +582,42 @@ code {
 
 .builder-field-row {
   display: grid;
-  grid-template-columns: minmax(120px, 0.85fr) minmax(120px, 0.85fr) 150px minmax(140px, 1fr) 100px 110px;
+  grid-template-columns: repeat(2, minmax(130px, 1fr)) 160px minmax(150px, 1fr) 130px 120px 140px;
   gap: 10px;
   align-items: end;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--soft);
+}
+
+.json-field textarea {
+  min-height: 118px;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.nested-designer {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px dashed var(--strong);
+  border-radius: 8px;
+  background: white;
+}
+
+.nested-field-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 150px 90px;
+  gap: 8px;
+  align-items: end;
 }
 
 .checkline {
@@ -606,6 +639,85 @@ code {
 .runtime-preview {
   display: grid;
   gap: 12px;
+}
+
+.runtime-field {
+  display: grid;
+  gap: 4px;
+}
+
+.runtime-field.has-error input,
+.runtime-field.has-error textarea,
+.runtime-field.has-error select {
+  border-color: var(--danger);
+}
+
+.validation-box {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #f0b9b2;
+  border-radius: 8px;
+  background: #fff2f0;
+  color: var(--danger);
+}
+
+.validation-box p {
+  margin: 0;
+  color: inherit;
+}
+
+.multi-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.runtime-table-wrap,
+.runtime-repeater {
+  display: grid;
+  gap: 10px;
+}
+
+.table-scroll {
+  overflow: auto;
+}
+
+.runtime-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+.runtime-table th,
+.runtime-table td {
+  padding: 8px;
+  border: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.runtime-table th {
+  background: var(--soft);
+  text-align: left;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.repeater-item {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.runtime-image {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 
 .runtime-preview h2,
@@ -655,7 +767,8 @@ code {
   }
 
   .function-grid,
-  .builder-field-row {
+  .builder-field-row,
+  .nested-field-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -670,7 +783,8 @@ code {
   .activity-row,
   .pk-row,
   .function-grid,
-  .builder-field-row {
+  .builder-field-row,
+  .nested-field-row {
     grid-template-columns: 1fr;
   }
 

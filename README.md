@@ -56,13 +56,38 @@ Builder umi:
 
 - vytvorit vice definic editoru
 - skladat editor ze sekci a poli
-- vybirat typ komponenty: text, vice radku, rich-text, select s vlastni hodnotou, checkbox, datum, cislo
-- zapinat predprogramovane funkce: stabilni ID, cislovani, odkazy, validace, HTML export, JSON export
+- vybirat typ komponenty: text, vice radku, rich-text, cislo, cele cislo, checkbox, select, multi-select, radio, datum, tabulka, repeater, computed, JSON a dalsi
+- zapinat predprogramovane funkce: stabilni ID, cislovani, odkazy, podminky, ciselniky, validace, audit, HTML export, JSON export
+- definovat `visibleWhen` a `requiredWhen` pres JSON podminky
+- definovat validace pres JSON (`min`, `max`, `minLength`, `maxLength`, `regex`, `integer`)
+- spravovat ciselniky jako JSON objekt a pripojit je na pole pres `dictionary`
 - zobrazit runtime nahled editoru podle aktualni definice
-- exportovat definici editoru jako JSON
+- importovat/exportovat definici editoru jako JSON
+- exportovat prazdny runtime datovy JSON podle definice
 - ukladat definice do `localStorage`
 
 Soucasny LP editor zustava samostatny rezim `Dokument`. Builder je pripraveny jako obecne jadro, nad kterym lze postupne pridavat importery/parsery pro dalsi typy dokumentu.
+
+Zakladni schema a registry jsou v `src/schema/editorSchema.ts`. Runtime pomocne funkce pro vychozi data, validace a computed hodnoty jsou v `src/runtime/runtimeEngine.ts`.
+
+Priklad podminky:
+
+```json
+{
+  "field": "vyzaduje_kontrolu",
+  "operator": "equals",
+  "value": true
+}
+```
+
+Priklad validace:
+
+```json
+{
+  "minLength": 3,
+  "maxLength": 120
+}
+```
 
 ## Import dat
 
