@@ -23,6 +23,8 @@ import {
   GripVertical,
   History,
   ListTree,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
   Save,
   Settings,
@@ -46,6 +48,7 @@ import {
   normalizeDefinition,
   validateFieldValue,
 } from "./schema/editorSchema";
+import { PackageDefinition, loadPackageDefinition, savePackageDefinition } from "./schema/packageSchema";
 import { collectValidationMessages, createEmptyRuntimeData, renderComputedValue } from "./runtime/runtimeEngine";
 import "./styles.css";
 
@@ -76,6 +79,7 @@ type DocumentNode<T = any> = {
 type Lp = any;
 type Reference = { id?: string; targetId?: string; valid?: boolean };
 type AppMode = "document" | "builder";
+type CreatableNodeType = Extract<NodeType, "chapter" | "lp" | "lpp" | "state" | "activity" | "pk_item">;
 
 type AppState = {
   root: DocumentNode;
@@ -89,6 +93,7 @@ type AppState = {
   updateLp: (lpId: string, updater: (lp: Lp) => void, label: string) => void;
   addChapter: (mode: "before" | "after" | "child", anchorId: string) => void;
   addLp: (mode: "before" | "after" | "child", anchorId: string) => void;
+  addChildObject: (parentId: string, type: CreatableNodeType) => void;
   deleteNode: (id: string) => void;
   duplicateNode: (id: string) => void;
   moveSibling: (id: string, direction: -1 | 1) => void;
@@ -99,6 +104,27 @@ type AppState = {
 
 const STORAGE_KEY = "lp-tree-editor-structure-v2";
 const OPERATOR_INDENT_SPACES: Record<number, number> = { 1: 0, 2: 4, 3: 8 };
+const NODE_TYPE_LABELS: Record<CreatableNodeType, string> = {
+  chapter: "Kapitola",
+  lp: "LP",
+  lpp: "LPP",
+  state: "Stav",
+  activity: "Činnost",
+  pk_item: "PK",
+};
+const DEFAULT_CHILD_RULES: Record<NodeType, CreatableNodeType[]> = {
+  document: ["chapter"],
+  chapter: ["chapter", "lp"],
+  lp: ["lpp", "state", "pk_item"],
+  lpp: [],
+  validity: [],
+  activities: [],
+  state: ["activity"],
+  activity: [],
+  pk_section: ["pk_item"],
+  pk_item: [],
+  additional_info: [],
+};
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const clone = <T,>(value: T): T => structuredClone(value);
@@ -166,6 +192,31 @@ function chapterToNode(input: any, parentId: string | null): DocumentNode {
   const childBlocks = input?.children || data.children || [];
   node.children = childBlocks.map((child: any) => (child.type === "chapter" || child.typ === "kapitola" ? chapterToNode(child, node.id) : lpToNode(child.obsah || child, node.id)));
   return node;
+}
+
+function createNodeByType(type: CreatableNodeType, parentId: string | null): DocumentNode {
+  if (type === "chapter") return chapterToNode({}, parentId);
+  if (type === "lp") return lpToNode({}, parentId);
+  const id = uid(type);
+  const dataByType: Record<CreatableNodeType, any> = {
+    chapter: {},
+    lp: {},
+    lpp: {
+      id,
+      nazev: "Nové LPP",
+      zneni: "",
+      platnost: { id: `${id}.platnost`, rezimy: [], doplnujici_text: "", exportovana_hodnota: "" },
+      extra_attributes: [],
+    },
+    state: { id, nazev_stavu: "Nový stav", zneni_stavu: "", extra_attributes: [] },
+    activity: { id, zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] },
+    pk_item: { id, nazev: "Nové PK", zneni: "", frekvence: "", extra_attributes: [] },
+  };
+  return baseNode(type, NODE_TYPE_LABELS[type], dataByType[type], parentId);
+}
+
+function allowedChildTypes(node: DocumentNode | null) {
+  return node ? DEFAULT_CHILD_RULES[node.type] || [] : DEFAULT_CHILD_RULES.document;
 }
 
 function buildInitialRoot(source: any): DocumentNode {
@@ -251,7 +302,7 @@ function flattenVisible(node: DocumentNode, collapsed: Record<string, boolean>, 
 }
 
 function canDrag(node: DocumentNode) {
-  return ["chapter", "lp"].includes(node.type);
+  return ["chapter", "lp", "lpp", "state", "activity", "pk_item"].includes(node.type);
 }
 
 function collectLpData(root: DocumentNode): any[] {
@@ -270,7 +321,7 @@ function exportNode(node: DocumentNode): string {
     return `<section class="document-block chapter" data-node-id="${node.id}"><h1>${node.number} ${escapeHtml(node.data.nazev || "")}</h1>${node.data.html_obsah || ""}</section>${children}`;
   }
   if (node.type === "lp") return exportLp(node);
-  return "";
+  return exportGenericNode(node);
 }
 
 function exportLp(node: DocumentNode): string {
@@ -282,7 +333,19 @@ function exportLp(node: DocumentNode): string {
     ).join(""),
   ).join("");
   const pk = lp.pk.map((item: any) => `<tr><td>${escapeHtml(item.nazev)}</td><td>${escapeHtml(item.zneni)}</td><td>${escapeHtml(item.frekvence)}</td></tr>`).join("");
-  return `<section class="document-block lp" data-node-id="${node.id}"><h1>${node.number} ${escapeHtml(lp.nadpis || "")}</h1>${lpp}<h2>Činnosti</h2><table><thead><tr><th>STAV</th><th>POŽADOVANÁ ČINNOST</th><th>DOBA PROVEDENÍ</th></tr></thead><tbody>${states}</tbody></table><h2>PK</h2><table><thead><tr><th>Název</th><th>Znění PK</th><th>FREKVENCE</th></tr></thead><tbody>${pk}</tbody></table>${lp.doplnujici_informace || ""}</section>`;
+  const children = node.children.map(exportNode).join("\n");
+  return `<section class="document-block lp" data-node-id="${node.id}"><h1>${node.number} ${escapeHtml(lp.nadpis || "")}</h1>${lpp}<h2>Činnosti</h2><table><thead><tr><th>STAV</th><th>POŽADOVANÁ ČINNOST</th><th>DOBA PROVEDENÍ</th></tr></thead><tbody>${states}</tbody></table><h2>PK</h2><table><thead><tr><th>Název</th><th>Znění PK</th><th>FREKVENCE</th></tr></thead><tbody>${pk}</tbody></table>${lp.doplnujici_informace || ""}</section>${children}`;
+}
+
+function exportGenericNode(node: DocumentNode): string {
+  const title = `${node.number ? `${node.number} ` : ""}${node.title || NODE_TYPE_LABELS[node.type as CreatableNodeType] || node.type}`;
+  const attributes = Object.entries(node.data || {})
+    .filter(([key]) => !["id", "extra_attributes", "platnost"].includes(key))
+    .map(([key, value]) => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(typeof value === "string" ? value : JSON.stringify(value))}</td></tr>`)
+    .join("");
+  const extra = (node.data.extra_attributes || []).map((attr: any) => `<tr><th>${escapeHtml(attr.label || attr.key)}</th><td>${escapeHtml(attr.value || "")}</td></tr>`).join("");
+  const children = node.children.map(exportNode).join("\n");
+  return `<section class="document-block ${node.type}" data-node-id="${node.id}"><h2>${escapeHtml(title)}</h2><table><tbody>${attributes}${extra}</tbody></table></section>${children}`;
 }
 
 function buildExportHtml(root: DocumentNode) {
@@ -312,8 +375,6 @@ const useDocStore = create<AppState>((set, get) => ({
     const node = findNode(root, lpId);
     if (node?.type === "lp") {
       updater(node.data);
-      const synced = lpToNode(node.data, node.parent_id);
-      node.children = synced.children;
       node.title = nodeTitle(node);
     }
     return { root: recomputeNumbers(root), history: [label, ...state.history].slice(0, 20) };
@@ -335,6 +396,15 @@ const useDocStore = create<AppState>((set, get) => ({
     const lp = lpToNode({}, parent.id);
     parent.children.splice(Math.max(0, index), 0, lp);
     return { root: recomputeNumbers(root), selectedId: lp.id, history: ["Přidána LP", ...state.history].slice(0, 20) };
+  }),
+  addChildObject: (parentId, type) => set((state) => {
+    const root = clone(state.root);
+    const parent = findNode(root, parentId) || root;
+    const allowed = allowedChildTypes(parent);
+    if (!allowed.includes(type)) return state;
+    const child = createNodeByType(type, parent.id);
+    parent.children.push(child);
+    return { root: recomputeNumbers(root), selectedId: child.id, history: [`Přidán objekt ${NODE_TYPE_LABELS[type]}`, ...state.history].slice(0, 20) };
   }),
   deleteNode: (id) => set((state) => {
     const root = clone(state.root);
@@ -401,6 +471,7 @@ const useDocStore = create<AppState>((set, get) => ({
 
 function App() {
   const [mode, setMode] = React.useState<AppMode>("document");
+  const [metadataOpen, setMetadataOpen] = React.useState(true);
   const { root, selectedId, reorderSiblings } = useDocStore();
   const selected = findNode(root, selectedId) || root.children[0];
   const visible = flattenVisible(root, useDocStore.getState().collapsed);
@@ -411,8 +482,8 @@ function App() {
 
   return (
     <div className="app-shell">
-      <TopToolbar mode={mode} onModeChange={setMode} />
-      {mode === "builder" ? <BuilderWorkspace /> : <div className="layout">
+      <TopToolbar mode={mode} onModeChange={setMode} metadataOpen={metadataOpen} onToggleMetadata={() => setMetadataOpen((open) => !open)} />
+      {mode === "builder" ? <BuilderWorkspace /> : <div className={metadataOpen ? "layout" : "layout metadata-collapsed"}>
         <aside className="sidebar">
           <div className="panel-head">
             <div className="panel-title"><ListTree size={18} /> Strom dokumentu</div>
@@ -425,14 +496,15 @@ function App() {
           </DndContext>
         </aside>
         <main className="main-pane">{selected ? <NodeDetail node={selected} /> : null}</main>
-        <RightPanel node={selected} />
+        {metadataOpen ? <RightPanel node={selected} /> : null}
       </div>}
     </div>
   );
 }
 
-function TopToolbar({ mode, onModeChange }: { mode: AppMode; onModeChange: (mode: AppMode) => void }) {
-  const { selectedId, addChapter, addLp, save, root } = useDocStore();
+function TopToolbar({ mode, onModeChange, metadataOpen, onToggleMetadata }: { mode: AppMode; onModeChange: (mode: AppMode) => void; metadataOpen: boolean; onToggleMetadata: () => void }) {
+  const { selectedId, save, root } = useDocStore();
+  const selected = findNode(root, selectedId) || root;
   const exportHtml = () => download("lp-export.html", buildExportHtml(root), "text/html;charset=utf-8");
   const exportDoc = () => download("lp-export.doc", buildExportHtml(root), "application/msword;charset=utf-8");
   const exportJson = () => download("lp-tree-export.json", JSON.stringify(root, null, 2), "application/json;charset=utf-8");
@@ -448,20 +520,42 @@ function TopToolbar({ mode, onModeChange }: { mode: AppMode; onModeChange: (mode
           <button className={mode === "builder" ? "active" : ""} onClick={() => onModeChange("builder")}><Settings size={16} /> Builder</button>
         </div>
         {mode === "document" ? <>
-          <button onClick={() => addChapter("after", selectedId)}><Plus size={16} /> Kapitola</button>
-          <button className="primary" onClick={() => addLp("after", selectedId)}><Plus size={16} /> LP</button>
+          <AddChildMenu parent={selected} />
           <button onClick={save}><Save size={16} /> Uložit</button>
           <button onClick={exportJson}><Download size={16} /> JSON</button>
           <button onClick={exportHtml}><Download size={16} /> HTML</button>
           <button onClick={exportDoc}><Download size={16} /> DOC</button>
+          <button onClick={onToggleMetadata}>{metadataOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />} Metadata</button>
         </> : null}
       </div>
     </header>
   );
 }
 
+function AddChildMenu({ parent }: { parent: DocumentNode }) {
+  const addChildObject = useDocStore((state) => state.addChildObject);
+  const [value, setValue] = React.useState("");
+  const options = allowedChildTypes(parent);
+  if (!options.length) return null;
+  const add = (type: string) => {
+    if (!type) return;
+    addChildObject(parent.id, type as CreatableNodeType);
+    setValue("");
+  };
+  return (
+    <label className="compact-select">
+      <span>Přidat pod {parent.type === "document" ? "dokument" : parent.title}</span>
+      <select value={value} onChange={(event) => { setValue(event.target.value); add(event.target.value); }}>
+        <option value="">Vybrat objekt...</option>
+        {options.map((type) => <option key={type} value={type}>{NODE_TYPE_LABELS[type]}</option>)}
+      </select>
+    </label>
+  );
+}
+
 function BuilderWorkspace() {
   const [definitions, setDefinitions] = React.useState<EditorDefinition[]>(loadEditorDefinitions);
+  const [packageDefinition, setPackageDefinition] = React.useState<PackageDefinition>(loadPackageDefinition);
   const [selectedId, setSelectedId] = React.useState(definitions[0]?.id || "");
   const selected = definitions.find((definition) => definition.id === selectedId) || definitions[0];
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -504,6 +598,11 @@ function BuilderWorkspace() {
     setSelectedId(next[0].id);
   };
   const exportDefinition = () => download(`${selected.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.editor.json`, JSON.stringify(selected, null, 2), "application/json;charset=utf-8");
+  const updatePackage = (definition: PackageDefinition) => {
+    setPackageDefinition(definition);
+    savePackageDefinition(definition);
+  };
+  const exportPackage = () => download(`${packageDefinition.key || "package"}.package.json`, JSON.stringify(packageDefinition, null, 2), "application/json;charset=utf-8");
   const importDefinition = (file: File | undefined) => {
     if (!file) return;
     const reader = new FileReader();
@@ -545,6 +644,8 @@ function BuilderWorkspace() {
       </aside>
 
       <main className="builder-main">
+        <PackageStudio definition={packageDefinition} onChange={updatePackage} onExport={exportPackage} />
+
         <Card title="Zaklad editoru" badge="SCHEMA">
           <div className="grid-2">
             <Field label="Nazev editoru" value={selected.name} onChange={(value) => updateSelected((definition) => { definition.name = value; })} />
@@ -593,6 +694,34 @@ function BuilderWorkspace() {
         </div>
       </aside>
     </div>
+  );
+}
+
+function PackageStudio({ definition, onChange, onExport }: { definition: PackageDefinition; onChange: (definition: PackageDefinition) => void; onExport: () => void }) {
+  const hierarchySummary = definition.assets.hierarchyRules.map((rule) => {
+    const parent = definition.assets.objectTypes.find((type) => type.key === rule.parentObjectTypeKey)?.name || rule.parentObjectTypeKey;
+    const children = rule.allowedChildObjectTypeKeys.map((key) => definition.assets.objectTypes.find((type) => type.key === key)?.name || key).join(", ");
+    return `${parent} → ${children || "žádný potomek"}`;
+  });
+  return (
+    <Card title="Package Studio" badge="DAWISO-LIKE">
+      <div className="package-studio">
+        <div className="package-summary">
+          <div><span>Package</span><strong>{definition.name}</strong></div>
+          <div><span>Key</span><code>{definition.key}</code></div>
+          <div><span>Verze</span><strong>{definition.version}</strong></div>
+          <div><span>Assety</span><strong>{definition.assets.objectTypes.length} objektů / {definition.assets.attributeTypes.length} atributů</strong></div>
+        </div>
+        <div className="hierarchy-preview">
+          <strong>Hierarchická pravidla</strong>
+          {hierarchySummary.map((item) => <p key={item}>{item}</p>)}
+        </div>
+        <JsonObjectEditor label="Package JSON" value={definition} emptyValue={definition} onChange={(value) => onChange(value as PackageDefinition)} />
+        <div className="inline-actions">
+          <button onClick={onExport}><Download size={16} /> Export package JSON</button>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -837,7 +966,7 @@ function JsonRuntimeField({ label, value, onChange }: { label: string; value: un
 }
 
 function TreeRow({ node, level }: { node: DocumentNode; level: number }) {
-  const { selectedId, collapsed, select, toggle, deleteNode, duplicateNode, moveSibling, addChapter, addLp } = useDocStore();
+  const { selectedId, collapsed, select, toggle, deleteNode, duplicateNode, moveSibling } = useDocStore();
   const sortable = useSortable({ id: node.id, disabled: !canDrag(node) });
   const style = { transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition };
   const hasChildren = node.children.length > 0;
@@ -857,8 +986,7 @@ function TreeRow({ node, level }: { node: DocumentNode; level: number }) {
         <button onClick={() => moveSibling(node.id, -1)}>↑</button>
         <button onClick={() => moveSibling(node.id, 1)}>↓</button>
         {(node.type === "chapter" || node.type === "lp") && <button onClick={() => duplicateNode(node.id)}>Duplikovat</button>}
-        {node.type === "chapter" && <button onClick={() => addLp("child", node.id)}>LP dovnitř</button>}
-        <button onClick={() => addChapter("after", node.id)}>+ Kap.</button>
+        <AddChildMenu parent={node} />
         <button className="danger-text" onClick={() => deleteNode(node.id)}>Smazat</button>
       </div>
     </div>
@@ -873,7 +1001,43 @@ function Badge({ type }: { type: NodeType }) {
 function NodeDetail({ node }: { node: DocumentNode }) {
   if (node.type === "chapter") return <ChapterEditor node={node} />;
   if (node.type === "lp") return <LpEditor node={node} />;
+  if (["lpp", "state", "activity", "pk_item"].includes(node.type)) return <GenericObjectEditor node={node} />;
   return <ReadOnlyNode node={node} />;
+}
+
+function GenericObjectEditor({ node }: { node: DocumentNode }) {
+  const update = useDocStore((state) => state.updateNodeData);
+  const patch = (patch: Record<string, any>) => update(node.id, { ...node.data, ...patch });
+  return (
+    <section className="detail-stack">
+      <HeaderCard node={node} />
+      <Card title={NODE_TYPE_LABELS[node.type as CreatableNodeType] || node.title} badge={node.type.toUpperCase()}>
+        {node.type === "lpp" ? <>
+          <div className="grid-2">
+            <Field label="Název LPP" value={node.data.nazev || ""} onChange={(value) => patch({ nazev: value })} />
+            <Textarea label="Znění LPP" value={node.data.zneni || ""} onChange={(value) => patch({ zneni: value })} />
+          </div>
+          <ValidityRow lpp={node.data} onChange={(platnost) => patch({ platnost })} />
+        </> : null}
+        {node.type === "state" ? <div className="grid-2">
+          <Field label="Název stavu" value={node.data.nazev_stavu || ""} onChange={(value) => patch({ nazev_stavu: value })} />
+          <Textarea label="Znění stavu" value={node.data.zneni_stavu || ""} onChange={(value) => patch({ zneni_stavu: value })} />
+        </div> : null}
+        {node.type === "activity" ? <div className="activity-row generic-activity">
+          <Textarea label="Znění činnosti" value={node.data.zneni_cinnosti || ""} onChange={(value) => patch({ zneni_cinnosti: value })} />
+          <Field label="Doba" value={node.data.doba_provedeni || ""} list="doba-list" onChange={(value) => patch({ doba_provedeni: value })} />
+          <label className="field"><span>Operátor</span><select value={node.data.operator || ""} onChange={(e) => patch({ operator: e.target.value })}><option value="" /><option>A</option><option>NEBO</option></select></label>
+          <Segmented label="Odsazení" value={node.data.operator_indentation || 1} onChange={(value) => patch({ operator_indentation: value })} />
+        </div> : null}
+        {node.type === "pk_item" ? <div className="pk-row">
+          <Field label="Název" value={node.data.nazev || ""} onChange={(value) => patch({ nazev: value })} />
+          <Textarea label="Znění" value={node.data.zneni || ""} onChange={(value) => patch({ zneni: value })} />
+          <Field label="Frekvence" value={node.data.frekvence || ""} list="frekvence-list" onChange={(value) => patch({ frekvence: value })} />
+        </div> : null}
+        <CustomAttributesEditor value={node.data.extra_attributes || []} onChange={(extra) => patch({ extra_attributes: extra })} />
+      </Card>
+    </section>
+  );
 }
 
 function ChapterEditor({ node }: { node: DocumentNode }) {
@@ -914,8 +1078,21 @@ function LpEditor({ node }: { node: DocumentNode }) {
               <Textarea label="Znění LPP" value={lpp.zneni} onChange={(value) => update((draft) => { draft.lpp[index].zneni = value; })} />
             </div>
             <ValidityRow lpp={lpp} onChange={(next) => update((draft) => { draft.lpp[index].platnost = next; })} />
+            <CustomAttributesEditor value={lpp.extra_attributes || []} onChange={(extra) => update((draft) => { draft.lpp[index].extra_attributes = extra; })} />
+            <div className="inline-actions">
+              <button className="danger-text" onClick={() => update((draft) => { draft.lpp.splice(index, 1); })}>Smazat LPP</button>
+            </div>
           </Card>
         ))}
+        <button className="primary wide-action" onClick={() => update((draft) => {
+          draft.lpp.push({
+            id: uid("lpp"),
+            nazev: `LPP ${draft.lpp.length + 1}`,
+            zneni: "",
+            platnost: { id: uid("validity"), rezimy: [], doplnujici_text: "", exportovana_hodnota: "" },
+            extra_attributes: [],
+          });
+        })}><Plus size={16} /> Přidat LPP</button>
       </Accordion>
       <Accordion title="Činnosti" defaultOpen>
         {lp.cinnosti.map((state: any, stateIndex: number) => (
@@ -935,12 +1112,23 @@ function LpEditor({ node }: { node: DocumentNode }) {
                 </div>
               ))}
             </div>
+            <CustomAttributesEditor value={state.extra_attributes || []} onChange={(extra) => update((draft) => { draft.cinnosti[stateIndex].extra_attributes = extra; })} />
             <div className="inline-actions">
               <button onClick={() => update((draft) => { draft.cinnosti[stateIndex].cinnosti.push({ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1 }); })}>Přidat činnost</button>
-              <button onClick={() => update((draft) => { draft.cinnosti.splice(stateIndex + 1, 0, { id: uid("state"), nazev_stavu: "", zneni_stavu: "", cinnosti: [{ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1 }] }); })}>Přidat stav</button>
+              <button onClick={() => update((draft) => { draft.cinnosti.splice(stateIndex + 1, 0, { id: uid("state"), nazev_stavu: "", zneni_stavu: "", extra_attributes: [], cinnosti: [{ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] }] }); })}>Přidat stav</button>
+              <button className="danger-text" onClick={() => update((draft) => { draft.cinnosti.splice(stateIndex, 1); })}>Smazat stav</button>
             </div>
           </Card>
         ))}
+        <button className="primary wide-action" onClick={() => update((draft) => {
+          draft.cinnosti.push({
+            id: uid("state"),
+            nazev_stavu: "",
+            zneni_stavu: "",
+            extra_attributes: [],
+            cinnosti: [{ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] }],
+          });
+        })}><Plus size={16} /> Přidat stav / blok činností</button>
       </Accordion>
       <Accordion title="PK" defaultOpen>
         <Card title="Položky PK" badge="PK">
@@ -1017,6 +1205,25 @@ function Field({ label, value, onChange, list }: { label: string; value: string;
 
 function Textarea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="field"><span>{label}</span><textarea value={value || ""} onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
+function CustomAttributesEditor({ value, onChange }: { value: Array<{ id: string; key: string; label: string; value: string }>; onChange: (value: Array<{ id: string; key: string; label: string; value: string }>) => void }) {
+  return (
+    <div className="custom-attributes">
+      <div className="subhead">
+        <strong>Doplňkové atributy</strong>
+        <button onClick={() => onChange([...(value || []), { id: uid("attr"), key: "", label: "", value: "" }])}><Plus size={16} /> Přidat atribut</button>
+      </div>
+      {(value || []).map((attr, index) => (
+        <div className="custom-attribute-row" key={attr.id}>
+          <Field label="Klíč" value={attr.key} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, key: next } : item))} />
+          <Field label="Název" value={attr.label} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, label: next } : item))} />
+          <Textarea label="Hodnota" value={attr.value} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, value: next } : item))} />
+          <button className="danger-text" onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}>Smazat</button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Segmented({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {

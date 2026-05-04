@@ -70,6 +70,43 @@ Soucasny LP editor zustava samostatny rezim `Dokument`. Builder je pripraveny ja
 
 Zakladni schema a registry jsou v `src/schema/editorSchema.ts`. Runtime pomocne funkce pro vychozi data, validace a computed hodnoty jsou v `src/runtime/runtimeEngine.ts`.
 
+## Package Studio
+
+Builder obsahuje take `Package Studio`, inspirovane principem DAWISO packages. Package JSON je ulozeny v `localStorage` a vychozi definice je v `src/schema/packageSchema.ts`.
+
+Package obsahuje assety:
+
+- `applications`
+- `objectTypes`
+- `attributeTypes`
+- `hierarchyRules`
+- `workflows`
+- `pages`
+- `exports`
+- `translations`
+- `automations`
+
+Hierarchii tvorby objektu ridi `hierarchyRules`, napriklad:
+
+```json
+[
+  { "parentObjectTypeKey": "document", "allowedChildObjectTypeKeys": ["chapter"] },
+  { "parentObjectTypeKey": "chapter", "allowedChildObjectTypeKeys": ["chapter", "lp"] },
+  { "parentObjectTypeKey": "lp", "allowedChildObjectTypeKeys": ["lpp", "state", "pk_item"] },
+  { "parentObjectTypeKey": "state", "allowedChildObjectTypeKeys": ["activity"] }
+]
+```
+
+V dokumentovem stromu uz nejsou pevna tlacitka `+ Kap.` a `LP dovnitr`. Pridavani objektu jde pres vyber `Pridat pod...`, ktery se ridi povolenymi typy potomku. Pravy metadata panel lze schovat tlacitkem `Metadata` v horni liste.
+
+LP editor ma v sekcich:
+
+- tlacitko pro pridani dalsiho LPP
+- tlacitko pro pridani stavu / bloku cinnosti i v prazdne sekci
+- doplnkove atributy pro LPP, stavy a nove stromove objekty
+
+Zaklad patch package modelu je pripraveny typem `PatchPackageDefinition` v `src/schema/packageSchema.ts`.
+
 Priklad podminky:
 
 ```json

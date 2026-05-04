@@ -133,6 +133,10 @@ button.danger {
   padding: 16px;
 }
 
+.layout.metadata-collapsed {
+  grid-template-columns: 330px minmax(0, 1fr);
+}
+
 .sidebar,
 .right-panel {
   position: sticky;
@@ -213,7 +217,7 @@ button.danger {
 
 .row-menu {
   display: grid;
-  grid-template-columns: 34px 34px 1fr 1fr 1fr;
+  grid-template-columns: 34px 34px minmax(0, 1fr) minmax(0, 1.25fr) minmax(80px, auto);
   gap: 5px;
   padding: 0 8px 8px;
 }
@@ -305,6 +309,26 @@ button.danger {
 .field {
   display: grid;
   gap: 6px;
+}
+
+.compact-select {
+  display: inline-grid;
+  gap: 3px;
+  min-width: 160px;
+}
+
+.compact-select span {
+  max-width: 210px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-select select {
+  min-height: 34px;
+  padding: 6px 8px;
 }
 
 .field span {
@@ -525,6 +549,35 @@ code {
   min-width: 0;
 }
 
+.package-studio {
+  display: grid;
+  gap: 12px;
+}
+
+.package-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.package-summary div,
+.hierarchy-preview {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.package-summary span,
+.hierarchy-preview p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .builder-list,
 .builder-actions {
   display: grid;
@@ -618,6 +671,33 @@ code {
   grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 150px 90px;
   gap: 8px;
   align-items: end;
+}
+
+.custom-attributes {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px dashed var(--strong);
+  border-radius: 9px;
+  background: var(--soft);
+}
+
+.subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.custom-attribute-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(130px, 0.8fr) minmax(0, 1fr) 90px;
+  gap: 10px;
+  align-items: end;
+}
+
+.generic-activity {
+  grid-template-columns: minmax(0, 1fr) 130px 110px 150px;
 }
 
 .checkline {
@@ -755,6 +835,10 @@ code {
     grid-template-columns: 290px minmax(0, 1fr);
   }
 
+  .layout.metadata-collapsed {
+    grid-template-columns: 290px minmax(0, 1fr);
+  }
+
   .builder-layout {
     grid-template-columns: 280px minmax(0, 1fr);
   }
@@ -768,7 +852,9 @@ code {
 
   .function-grid,
   .builder-field-row,
-  .nested-field-row {
+  .nested-field-row,
+  .package-summary,
+  .custom-attribute-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -784,7 +870,9 @@ code {
   .pk-row,
   .function-grid,
   .builder-field-row,
-  .nested-field-row {
+  .nested-field-row,
+  .package-summary,
+  .custom-attribute-row {
     grid-template-columns: 1fr;
   }
 
