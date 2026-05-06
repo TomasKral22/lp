@@ -187,11 +187,17 @@ button.danger {
 
 .tree-main {
   display: grid;
-  grid-template-columns: 24px 24px 18px minmax(36px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: 18px 24px 24px 18px minmax(36px, auto) minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
   min-height: 38px;
   padding: 4px 8px;
+}
+
+.export-check {
+  width: 16px;
+  height: 16px;
+  margin: 0;
 }
 
 .tree-main .icon,
@@ -886,7 +892,7 @@ code {
   }
 
   .tree-main {
-    grid-template-columns: 24px 24px 18px auto minmax(0, 1fr);
+    grid-template-columns: 18px 24px 24px 18px auto minmax(0, 1fr);
   }
 
   .tree-main .badge {

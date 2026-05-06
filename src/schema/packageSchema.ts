@@ -14,6 +14,7 @@ export type PackageDefinition = {
     workflows: PackageWorkflow[];
     pages: PackagePage[];
     exports: PackageExport[];
+    exportTemplates: PackageExportTemplate[];
     translations: PackageTranslation[];
     automations: PackageAutomation[];
   };
@@ -59,7 +60,18 @@ export type PackageAttributeType = {
   allowCustomValue?: boolean;
   validation?: Record<string, unknown>;
   conditions?: Record<string, unknown>[];
+  suggestions?: PackageSuggestionConfig;
+  htmlMode?: "plain" | "html" | "template" | "expression";
+  expressionLanguage?: "template" | "javascript";
   state?: PackageAssetState;
+};
+
+export type PackageSuggestionConfig = {
+  mode: "static" | "dictionary" | "api";
+  values?: string[];
+  dictionaryKey?: string;
+  apiKey?: string;
+  minChars?: number;
 };
 
 export type PackageHierarchyRule = {
@@ -86,6 +98,25 @@ export type PackageExport = {
   name: string;
   type: "html" | "json" | "docx" | "pdf";
   templateKey?: string;
+};
+
+export type PackageExportTemplate = {
+  key: string;
+  name: string;
+  objectTypeKey: string;
+  type: "html" | "docx" | "pdf" | "json";
+  content?: string;
+  attributeLayout?: Array<{ attributeTypeKey: string; slot: string; label?: string; visible?: boolean }>;
+  typography?: {
+    fontFamily?: string;
+    baseFontSize?: number;
+    headingFontSize?: number;
+    lineHeight?: number;
+  };
+  page?: {
+    marginMm?: number;
+    orientation?: "portrait" | "landscape";
+  };
 };
 
 export type PackageTranslation = {
@@ -184,8 +215,23 @@ export const defaultPackageDefinition: PackageDefinition = {
       },
     ],
     exports: [
-      { key: "lp_html", name: "HTML export", type: "html" },
+      { key: "lp_html", name: "HTML export", type: "html", templateKey: "lp_default_html" },
       { key: "lp_json", name: "JSON export", type: "json" },
+    ],
+    exportTemplates: [
+      {
+        key: "lp_default_html",
+        name: "LP default HTML template",
+        objectTypeKey: "lp",
+        type: "html",
+        content: "<h1>{{cislo_lp}} {{nadpis}}</h1>{{content}}",
+        attributeLayout: [
+          { attributeTypeKey: "cislo_lp", slot: "header.left", label: "Číslo LP", visible: true },
+          { attributeTypeKey: "nadpis", slot: "header.title", label: "Nadpis", visible: true },
+        ],
+        typography: { fontFamily: "Arial", baseFontSize: 11, headingFontSize: 16, lineHeight: 1.35 },
+        page: { marginMm: 18, orientation: "portrait" },
+      },
     ],
     translations: [],
     automations: [],
@@ -196,7 +242,7 @@ export function loadPackageDefinition(): PackageDefinition {
   const saved = localStorage.getItem(PACKAGE_STORAGE_KEY);
   if (!saved) return defaultPackageDefinition;
   try {
-    return { ...defaultPackageDefinition, ...JSON.parse(saved) };
+    return normalizePackageDefinition(JSON.parse(saved));
   } catch {
     localStorage.removeItem(PACKAGE_STORAGE_KEY);
     return defaultPackageDefinition;
@@ -204,5 +250,16 @@ export function loadPackageDefinition(): PackageDefinition {
 }
 
 export function savePackageDefinition(definition: PackageDefinition) {
-  localStorage.setItem(PACKAGE_STORAGE_KEY, JSON.stringify(definition));
+  localStorage.setItem(PACKAGE_STORAGE_KEY, JSON.stringify(normalizePackageDefinition(definition)));
+}
+
+export function normalizePackageDefinition(definition: Partial<PackageDefinition>): PackageDefinition {
+  return {
+    ...defaultPackageDefinition,
+    ...definition,
+    assets: {
+      ...defaultPackageDefinition.assets,
+      ...(definition.assets || {}),
+    },
+  };
 }

@@ -83,6 +83,7 @@ Package obsahuje assety:
 - `workflows`
 - `pages`
 - `exports`
+- `exportTemplates`
 - `translations`
 - `automations`
 
@@ -98,6 +99,36 @@ Hierarchii tvorby objektu ridi `hierarchyRules`, napriklad:
 ```
 
 V dokumentovem stromu uz nejsou pevna tlacitka `+ Kap.` a `LP dovnitr`. Pridavani objektu jde pres vyber `Pridat pod...`, ktery se ridi povolenymi typy potomku. Pravy metadata panel lze schovat tlacitkem `Metadata` v horni liste.
+
+Pokud v `Package Studio` pridas novy `objectType` a doplnis ho do `hierarchyRules`, objevi se v dokumentovem rezimu v rozbalovaci nabidce `Pridat pod...`. Vestavene typy (`chapter`, `lp`, `lpp`, `state`, `activity`, `pk_item`) maji vlastni editory. Ostatni typy se vytvori jako obecny `custom_object` s doplnkovymi atributy.
+
+Export lze omezit jen na vybrane objekty:
+
+- ve stromu zaskrtni checkbox u objektu
+- pouzij tlacitko `Vybrane HTML`
+- pokud vyberes rodice, exportuje se i jeho podstrom
+
+Exportni sablony se spravuji v `Package Studio` pres `assets.exportTemplates`. Sablona muze obsahovat:
+
+- `objectTypeKey`
+- `content`
+- `attributeLayout`
+- `typography`
+- `page`
+
+Pres tlacitko `Nahrat exportni sablonu` lze nacist textovou sablonu (`html`, `txt`, `json`, `doc`). Binarnarni DOCX sablony budeme resit zvlast, protoze vyzaduji samostatny parser/generator.
+
+Atributy maji pripravenou konfiguraci pro naseptavac pres `suggestions`:
+
+```json
+{
+  "mode": "static",
+  "values": ["hodnota 1", "hodnota 2"],
+  "minChars": 2
+}
+```
+
+HTML / JS atributy: schema podporuje `htmlMode` a `expressionLanguage`. Volny JavaScript se zatim v prohlizeci nespousti. Je ulozen jako konfigurace pro pozdejsi sandboxovane vyhodnoceni.
 
 LP editor ma v sekcich:
 

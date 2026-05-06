@@ -48,7 +48,7 @@ import {
   normalizeDefinition,
   validateFieldValue,
 } from "./schema/editorSchema";
-import { PackageDefinition, loadPackageDefinition, savePackageDefinition } from "./schema/packageSchema";
+import { PackageDefinition, loadPackageDefinition, normalizePackageDefinition, savePackageDefinition } from "./schema/packageSchema";
 import { collectValidationMessages, createEmptyRuntimeData, renderComputedValue } from "./runtime/runtimeEngine";
 import "./styles.css";
 
@@ -63,7 +63,8 @@ type NodeType =
   | "activity"
   | "pk_section"
   | "pk_item"
-  | "additional_info";
+  | "additional_info"
+  | "custom_object";
 
 type DocumentNode<T = any> = {
   id: string;
@@ -79,16 +80,19 @@ type DocumentNode<T = any> = {
 type Lp = any;
 type Reference = { id?: string; targetId?: string; valid?: boolean };
 type AppMode = "document" | "builder";
-type CreatableNodeType = Extract<NodeType, "chapter" | "lp" | "lpp" | "state" | "activity" | "pk_item">;
+type CreatableNodeType = string;
 
 type AppState = {
   root: DocumentNode;
   selectedId: string;
   collapsed: Record<string, boolean>;
+  selectedForExport: Record<string, boolean>;
   references: Reference[];
   history: string[];
   select: (id: string) => void;
   toggle: (id: string) => void;
+  toggleExportSelection: (id: string) => void;
+  clearExportSelection: () => void;
   updateNodeData: (id: string, patch: Record<string, any>) => void;
   updateLp: (lpId: string, updater: (lp: Lp) => void, label: string) => void;
   addChapter: (mode: "before" | "after" | "child", anchorId: string) => void;
@@ -104,7 +108,8 @@ type AppState = {
 
 const STORAGE_KEY = "lp-tree-editor-structure-v2";
 const OPERATOR_INDENT_SPACES: Record<number, number> = { 1: 0, 2: 4, 3: 8 };
-const NODE_TYPE_LABELS: Record<CreatableNodeType, string> = {
+const BUILT_IN_OBJECT_TYPE_KEYS = ["chapter", "lp", "lpp", "state", "activity", "pk_item"];
+const NODE_TYPE_LABELS: Record<string, string> = {
   chapter: "Kapitola",
   lp: "LP",
   lpp: "LPP",
@@ -112,7 +117,7 @@ const NODE_TYPE_LABELS: Record<CreatableNodeType, string> = {
   activity: "Činnost",
   pk_item: "PK",
 };
-const DEFAULT_CHILD_RULES: Record<NodeType, CreatableNodeType[]> = {
+const DEFAULT_CHILD_RULES: Record<string, string[]> = {
   document: ["chapter"],
   chapter: ["chapter", "lp"],
   lp: ["lpp", "state", "pk_item"],
@@ -124,6 +129,7 @@ const DEFAULT_CHILD_RULES: Record<NodeType, CreatableNodeType[]> = {
   pk_section: ["pk_item"],
   pk_item: [],
   additional_info: [],
+  custom_object: [],
 };
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -194,13 +200,21 @@ function chapterToNode(input: any, parentId: string | null): DocumentNode {
   return node;
 }
 
+function objectTypeKeyForNode(node: DocumentNode | null) {
+  if (!node) return "document";
+  return node.type === "custom_object" ? node.data.objectTypeKey || "custom_object" : node.type;
+}
+
+function objectTypeLabel(objectTypeKey: string) {
+  const packageDefinition = loadPackageDefinition();
+  return packageDefinition.assets.objectTypes.find((type) => type.key === objectTypeKey)?.name || NODE_TYPE_LABELS[objectTypeKey] || objectTypeKey;
+}
+
 function createNodeByType(type: CreatableNodeType, parentId: string | null): DocumentNode {
   if (type === "chapter") return chapterToNode({}, parentId);
   if (type === "lp") return lpToNode({}, parentId);
   const id = uid(type);
-  const dataByType: Record<CreatableNodeType, any> = {
-    chapter: {},
-    lp: {},
+  const dataByType: Record<string, any> = {
     lpp: {
       id,
       nazev: "Nové LPP",
@@ -212,11 +226,15 @@ function createNodeByType(type: CreatableNodeType, parentId: string | null): Doc
     activity: { id, zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] },
     pk_item: { id, nazev: "Nové PK", zneni: "", frekvence: "", extra_attributes: [] },
   };
-  return baseNode(type, NODE_TYPE_LABELS[type], dataByType[type], parentId);
+  if (BUILT_IN_OBJECT_TYPE_KEYS.includes(type)) return baseNode(type as NodeType, objectTypeLabel(type), dataByType[type], parentId);
+  return baseNode("custom_object", objectTypeLabel(type), { id, objectTypeKey: type, title: objectTypeLabel(type), extra_attributes: [] }, parentId);
 }
 
 function allowedChildTypes(node: DocumentNode | null) {
-  return node ? DEFAULT_CHILD_RULES[node.type] || [] : DEFAULT_CHILD_RULES.document;
+  const packageDefinition = loadPackageDefinition();
+  const parentKey = objectTypeKeyForNode(node);
+  const packageRule = packageDefinition.assets.hierarchyRules.find((rule) => rule.parentObjectTypeKey === parentKey);
+  return packageRule?.allowedChildObjectTypeKeys || DEFAULT_CHILD_RULES[parentKey] || [];
 }
 
 function buildInitialRoot(source: any): DocumentNode {
@@ -266,6 +284,7 @@ function nodeTitle(node: DocumentNode) {
   if (node.type === "state") return node.data.nazev_stavu || "Stav";
   if (node.type === "activity") return node.data.zneni_cinnosti || "Činnost";
   if (node.type === "pk_item") return node.data.nazev || "PK";
+  if (node.type === "custom_object") return node.data.title || objectTypeLabel(node.data.objectTypeKey);
   return node.title;
 }
 
@@ -302,7 +321,7 @@ function flattenVisible(node: DocumentNode, collapsed: Record<string, boolean>, 
 }
 
 function canDrag(node: DocumentNode) {
-  return ["chapter", "lp", "lpp", "state", "activity", "pk_item"].includes(node.type);
+  return ["chapter", "lp", "lpp", "state", "activity", "pk_item", "custom_object"].includes(node.type);
 }
 
 function collectLpData(root: DocumentNode): any[] {
@@ -348,19 +367,43 @@ function exportGenericNode(node: DocumentNode): string {
   return `<section class="document-block ${node.type}" data-node-id="${node.id}"><h2>${escapeHtml(title)}</h2><table><tbody>${attributes}${extra}</tbody></table></section>${children}`;
 }
 
-function buildExportHtml(root: DocumentNode) {
-  const body = root.children.map(exportNode).join("\n");
+function buildExportHtml(root: DocumentNode, selectedIds?: Set<string>) {
+  const body = selectedIds?.size ? exportSelectedNodes(root, selectedIds) : root.children.map(exportNode).join("\n");
   return `<!doctype html><html lang="cs"><head><meta charset="utf-8"><title>LP export</title><style>body{font-family:Arial,sans-serif;margin:32px;line-height:1.35}.document-block{display:block;margin:0 0 30px;padding-top:1px}.document-block+.document-block{border-top:1px solid transparent;padding-top:18px}table{border-collapse:collapse;width:100%;margin:8px 0 18px}td,th{border:1px solid #777;padding:6px;vertical-align:top;white-space:pre-wrap}th{background:#eee}.operator{display:block;white-space:pre;font-weight:bold;margin-top:4px}img{max-width:100%;height:auto}</style></head><body>${body}<script type="application/json" id="document-tree">${escapeScriptJson(JSON.stringify(root))}</script></body></html>`;
+}
+
+function exportSelectedNodes(root: DocumentNode, selectedIds: Set<string>) {
+  const walk = (node: DocumentNode): string => {
+    if (selectedIds.has(node.id)) return exportNode(node);
+    return node.children.map(walk).join("\n");
+  };
+  return root.children.map(walk).join("\n");
+}
+
+function collectSelectedNodes(root: DocumentNode, selectedIds: Set<string>) {
+  const result: DocumentNode[] = [];
+  const walk = (node: DocumentNode) => {
+    if (selectedIds.has(node.id)) {
+      result.push(node);
+      return;
+    }
+    node.children.forEach(walk);
+  };
+  root.children.forEach(walk);
+  return result;
 }
 
 const useDocStore = create<AppState>((set, get) => ({
   root: buildInitialRoot(initialData),
   selectedId: buildInitialRoot(initialData).children[0]?.id || "document-001",
   collapsed: {},
+  selectedForExport: {},
   references: (initialData as any).references || [],
   history: [],
   select: (id) => set({ selectedId: id }),
   toggle: (id) => set((state) => ({ collapsed: { ...state.collapsed, [id]: !state.collapsed[id] } })),
+  toggleExportSelection: (id) => set((state) => ({ selectedForExport: { ...state.selectedForExport, [id]: !state.selectedForExport[id] } })),
+  clearExportSelection: () => set({ selectedForExport: {} }),
   updateNodeData: (id, patch) => set((state) => {
     const root = clone(state.root);
     const node = findNode(root, id);
@@ -404,7 +447,7 @@ const useDocStore = create<AppState>((set, get) => ({
     if (!allowed.includes(type)) return state;
     const child = createNodeByType(type, parent.id);
     parent.children.push(child);
-    return { root: recomputeNumbers(root), selectedId: child.id, history: [`Přidán objekt ${NODE_TYPE_LABELS[type]}`, ...state.history].slice(0, 20) };
+    return { root: recomputeNumbers(root), selectedId: child.id, history: [`Přidán objekt ${objectTypeLabel(type)}`, ...state.history].slice(0, 20) };
   }),
   deleteNode: (id) => set((state) => {
     const root = clone(state.root);
@@ -465,7 +508,7 @@ const useDocStore = create<AppState>((set, get) => ({
   reset: () => {
     localStorage.removeItem(STORAGE_KEY);
     const root = buildInitialRoot(initialData);
-    set({ root, selectedId: root.children[0]?.id || root.id, collapsed: {}, history: ["Reset na importovaná data"] });
+    set({ root, selectedId: root.children[0]?.id || root.id, collapsed: {}, selectedForExport: {}, history: ["Reset na importovaná data"] });
   },
 }));
 
@@ -503,11 +546,20 @@ function App() {
 }
 
 function TopToolbar({ mode, onModeChange, metadataOpen, onToggleMetadata }: { mode: AppMode; onModeChange: (mode: AppMode) => void; metadataOpen: boolean; onToggleMetadata: () => void }) {
-  const { selectedId, save, root } = useDocStore();
+  const { selectedId, selectedForExport, clearExportSelection, save, root } = useDocStore();
   const selected = findNode(root, selectedId) || root;
+  const selectedExportIds = Object.entries(selectedForExport).filter(([, checked]) => checked).map(([id]) => id);
   const exportHtml = () => download("lp-export.html", buildExportHtml(root), "text/html;charset=utf-8");
   const exportDoc = () => download("lp-export.doc", buildExportHtml(root), "application/msword;charset=utf-8");
   const exportJson = () => download("lp-tree-export.json", JSON.stringify(root, null, 2), "application/json;charset=utf-8");
+  const exportSelectedHtml = () => {
+    if (!selectedExportIds.length) return alert("Nejdřív označ objekty pro export ve stromu.");
+    download("lp-export-selected.html", buildExportHtml(root, new Set(selectedExportIds)), "text/html;charset=utf-8");
+  };
+  const exportSelectedJson = () => {
+    if (!selectedExportIds.length) return alert("Nejdřív označ objekty pro export ve stromu.");
+    download("lp-export-selected.json", JSON.stringify(collectSelectedNodes(root, new Set(selectedExportIds)), null, 2), "application/json;charset=utf-8");
+  };
   return (
     <header className="topbar">
       <div className="brand">
@@ -524,7 +576,10 @@ function TopToolbar({ mode, onModeChange, metadataOpen, onToggleMetadata }: { mo
           <button onClick={save}><Save size={16} /> Uložit</button>
           <button onClick={exportJson}><Download size={16} /> JSON</button>
           <button onClick={exportHtml}><Download size={16} /> HTML</button>
+          <button onClick={exportSelectedHtml}><Download size={16} /> Vybrané HTML ({selectedExportIds.length})</button>
+          <button onClick={exportSelectedJson}><Download size={16} /> Vybrané JSON</button>
           <button onClick={exportDoc}><Download size={16} /> DOC</button>
+          {selectedExportIds.length ? <button onClick={clearExportSelection}>Zrušit výběr</button> : null}
           <button onClick={onToggleMetadata}>{metadataOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />} Metadata</button>
         </> : null}
       </div>
@@ -547,7 +602,7 @@ function AddChildMenu({ parent }: { parent: DocumentNode }) {
       <span>Přidat pod {parent.type === "document" ? "dokument" : parent.title}</span>
       <select value={value} onChange={(event) => { setValue(event.target.value); add(event.target.value); }}>
         <option value="">Vybrat objekt...</option>
-        {options.map((type) => <option key={type} value={type}>{NODE_TYPE_LABELS[type]}</option>)}
+        {options.map((type) => <option key={type} value={type}>{objectTypeLabel(type)}</option>)}
       </select>
     </label>
   );
@@ -599,8 +654,9 @@ function BuilderWorkspace() {
   };
   const exportDefinition = () => download(`${selected.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.editor.json`, JSON.stringify(selected, null, 2), "application/json;charset=utf-8");
   const updatePackage = (definition: PackageDefinition) => {
-    setPackageDefinition(definition);
-    savePackageDefinition(definition);
+    const normalized = normalizePackageDefinition(definition);
+    setPackageDefinition(normalized);
+    savePackageDefinition(normalized);
   };
   const exportPackage = () => download(`${packageDefinition.key || "package"}.package.json`, JSON.stringify(packageDefinition, null, 2), "application/json;charset=utf-8");
   const importDefinition = (file: File | undefined) => {
@@ -698,11 +754,33 @@ function BuilderWorkspace() {
 }
 
 function PackageStudio({ definition, onChange, onExport }: { definition: PackageDefinition; onChange: (definition: PackageDefinition) => void; onExport: () => void }) {
+  const templateInputRef = React.useRef<HTMLInputElement | null>(null);
   const hierarchySummary = definition.assets.hierarchyRules.map((rule) => {
     const parent = definition.assets.objectTypes.find((type) => type.key === rule.parentObjectTypeKey)?.name || rule.parentObjectTypeKey;
     const children = rule.allowedChildObjectTypeKeys.map((key) => definition.assets.objectTypes.find((type) => type.key === key)?.name || key).join(", ");
     return `${parent} → ${children || "žádný potomek"}`;
   });
+  const uploadTemplate = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = clone(definition);
+      next.assets.exportTemplates = [
+        ...(next.assets.exportTemplates || []),
+        {
+          key: `template_${Date.now().toString(36)}`,
+          name: file.name,
+          objectTypeKey: "lp",
+          type: file.name.toLowerCase().endsWith(".json") ? "json" : "html",
+          content: String(reader.result || ""),
+          typography: { fontFamily: "Arial", baseFontSize: 11, headingFontSize: 16, lineHeight: 1.35 },
+          attributeLayout: [],
+        },
+      ];
+      onChange(next);
+    };
+    reader.readAsText(file);
+  };
   return (
     <Card title="Package Studio" badge="DAWISO-LIKE">
       <div className="package-studio">
@@ -717,6 +795,11 @@ function PackageStudio({ definition, onChange, onExport }: { definition: Package
           {hierarchySummary.map((item) => <p key={item}>{item}</p>)}
         </div>
         <JsonObjectEditor label="Package JSON" value={definition} emptyValue={definition} onChange={(value) => onChange(value as PackageDefinition)} />
+        <div className="inline-actions">
+          <button onClick={() => templateInputRef.current?.click()}><Plus size={16} /> Nahrát exportní šablonu</button>
+          <input ref={templateInputRef} className="hidden-input" type="file" accept=".html,.htm,.txt,.json,.doc" onChange={(event) => uploadTemplate(event.target.files?.[0])} />
+          <span className="muted">{(definition.assets.exportTemplates || []).length} šablon v package</span>
+        </div>
         <div className="inline-actions">
           <button onClick={onExport}><Download size={16} /> Export package JSON</button>
         </div>
@@ -966,13 +1049,14 @@ function JsonRuntimeField({ label, value, onChange }: { label: string; value: un
 }
 
 function TreeRow({ node, level }: { node: DocumentNode; level: number }) {
-  const { selectedId, collapsed, select, toggle, deleteNode, duplicateNode, moveSibling } = useDocStore();
+  const { selectedId, collapsed, selectedForExport, select, toggle, toggleExportSelection, deleteNode, duplicateNode, moveSibling } = useDocStore();
   const sortable = useSortable({ id: node.id, disabled: !canDrag(node) });
   const style = { transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition };
   const hasChildren = node.children.length > 0;
   return (
     <div ref={sortable.setNodeRef} style={style} className={`tree-row ${selectedId === node.id ? "selected" : ""}`} onClick={() => select(node.id)}>
       <div className="tree-main" style={{ paddingLeft: 8 + level * 16 }}>
+        <input className="export-check" type="checkbox" checked={Boolean(selectedForExport[node.id])} onChange={(event) => { event.stopPropagation(); toggleExportSelection(node.id); }} onClick={(event) => event.stopPropagation()} title="Zahrnout do výběrového exportu" />
         <button className="icon tiny" onClick={(e) => { e.stopPropagation(); toggle(node.id); }}>
           {hasChildren ? (collapsed[node.id] ? <ChevronRight size={14} /> : <ChevronDown size={14} />) : <span />}
         </button>
@@ -994,14 +1078,14 @@ function TreeRow({ node, level }: { node: DocumentNode; level: number }) {
 }
 
 function Badge({ type }: { type: NodeType }) {
-  const label = type === "chapter" ? "KAPITOLA" : type === "lp" ? "LP" : type.toUpperCase();
+  const label = type === "chapter" ? "KAPITOLA" : type === "lp" ? "LP" : type === "custom_object" ? "OBJECT" : type.toUpperCase();
   return <span className={`badge ${type}`}>{label}</span>;
 }
 
 function NodeDetail({ node }: { node: DocumentNode }) {
   if (node.type === "chapter") return <ChapterEditor node={node} />;
   if (node.type === "lp") return <LpEditor node={node} />;
-  if (["lpp", "state", "activity", "pk_item"].includes(node.type)) return <GenericObjectEditor node={node} />;
+  if (["lpp", "state", "activity", "pk_item", "custom_object"].includes(node.type)) return <GenericObjectEditor node={node} />;
   return <ReadOnlyNode node={node} />;
 }
 
@@ -1033,6 +1117,10 @@ function GenericObjectEditor({ node }: { node: DocumentNode }) {
           <Field label="Název" value={node.data.nazev || ""} onChange={(value) => patch({ nazev: value })} />
           <Textarea label="Znění" value={node.data.zneni || ""} onChange={(value) => patch({ zneni: value })} />
           <Field label="Frekvence" value={node.data.frekvence || ""} list="frekvence-list" onChange={(value) => patch({ frekvence: value })} />
+        </div> : null}
+        {node.type === "custom_object" ? <div className="grid-2">
+          <Field label="Typ objektu" value={node.data.objectTypeKey || ""} onChange={(value) => patch({ objectTypeKey: value })} />
+          <Field label="Název objektu" value={node.data.title || ""} onChange={(value) => patch({ title: value })} />
         </div> : null}
         <CustomAttributesEditor value={node.data.extra_attributes || []} onChange={(extra) => patch({ extra_attributes: extra })} />
       </Card>
