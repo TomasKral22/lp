@@ -134,7 +134,7 @@ HTML / JS atributy: schema podporuje `htmlMode` a `expressionLanguage`. Volny Ja
 
 Horni lista ma rezimy:
 
-- `Dokument`: editace aktualnich dat
+- `Dokument`: editace aktivni revize/zmeny
 - `Nahled`: read-only nahled, revize/zmeny, bloky a filtry platnosti
 - `Builder`: package/editor konfigurace
 
@@ -142,9 +142,12 @@ V rezimu `Nahled`:
 
 - panel vlevo eviduje revize a zmeny
 - lze zalozit `+ R` nebo `+ Z`
-- prace ma cislo, typ, stav, datum ucinnosti, poznamku a hash aktualniho stromu
-- schvaleni ulozi aktualni hash dokumentu
-- samotna data se porad edituji v rezimu `Dokument`
+- prace ma cislo, typ, stav, datum ucinnosti, poznamku, hash zakladu a hash draftu
+- po zalozeni nebo vyberu prace se rezim `Dokument` prepne na jeji draft strom
+- samotna data se edituji normalne v rezimu `Dokument`, ale pouze v ramci aktivni prace
+- publikovany dokument je bez aktivni prace read-only
+- schvaleni publikuje draft do hlavniho dokumentu
+- pokud se publikovany dokument zmenil od zalozeni prace, schvaleni skonci hash konfliktem
 
 Blokovy nahled:
 
@@ -152,6 +155,7 @@ Blokovy nahled:
 - klik na blok otevira samostatny dokument daneho bloku
 - pravy pruh `1-7` filtruje LP podle rezimu v `LPP.platnost.rezimy`
 - v tabulkovem prehledu se zobrazi jen LP, ktera maji vybrany rezim v alespon jednom LPP
+- datum `Zobrazit k datu` vybira posledni schvalenou praci s ucinnosti do daneho data
 
 LP editor ma v sekcich:
 

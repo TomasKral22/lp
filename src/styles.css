@@ -570,6 +570,10 @@ code {
   padding: 4px 2px 12px;
 }
 
+.compact-date {
+  min-width: 170px;
+}
+
 .preview-header h1 {
   margin: 0;
   font-family: Consolas, "Courier New", monospace;
@@ -591,6 +595,30 @@ code {
   margin-bottom: 14px;
   padding-bottom: 10px;
   border-bottom: 2px solid #6f8b80;
+}
+
+.preview-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.timeline-pill {
+  display: inline-flex;
+  border: 1px solid #9aafa6;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #f7faf8;
+  color: #53665d;
+  font-size: 12px;
+}
+
+.timeline-pill.active {
+  border-color: #315d4c;
+  background: #dce8e1;
+  color: #0b1d16;
+  font-weight: 700;
 }
 
 .block-tab {

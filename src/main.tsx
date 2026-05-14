@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import ReactDOM from "react-dom/client";
 import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -87,17 +87,25 @@ type ControlWork = {
   status: "draft" | "approved" | "cancelled";
   effectiveDate: string;
   note: string;
+  baseHash: string;
   treeHash: string;
+  baseRoot: DocumentNode;
+  draftRoot: DocumentNode;
   createdAt: string;
   approvedAt?: string;
+  conflict?: string;
+  linkedReview: { confirmed: boolean; checkedNodeIds: string[] };
 };
 type CreatableNodeType = string;
 
 type AppState = {
   root: DocumentNode;
+  publishedRoot: DocumentNode;
   selectedId: string;
   collapsed: Record<string, boolean>;
   selectedForExport: Record<string, boolean>;
+  works: ControlWork[];
+  activeWorkId: string | null;
   references: Reference[];
   history: string[];
   select: (id: string) => void;
@@ -113,6 +121,11 @@ type AppState = {
   duplicateNode: (id: string) => void;
   moveSibling: (id: string, direction: -1 | 1) => void;
   reorderSiblings: (activeId: string, overId: string) => void;
+  addControlWork: (type: "revision" | "change") => void;
+  selectControlWork: (id: string | null) => void;
+  updateControlWork: (id: string, patch: Partial<ControlWork>) => void;
+  approveActiveWork: () => void;
+  cancelActiveWork: () => void;
   save: () => void;
   reset: () => void;
 };
@@ -126,7 +139,7 @@ const NODE_TYPE_LABELS: Record<string, string> = {
   lp: "LP",
   lpp: "LPP",
   state: "Stav",
-  activity: "Činnost",
+  activity: "ÄŚinnost",
   pk_item: "PK",
 };
 const DEFAULT_CHILD_RULES: Record<string, string[]> = {
@@ -146,6 +159,20 @@ const DEFAULT_CHILD_RULES: Record<string, string[]> = {
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const clone = <T,>(value: T): T => structuredClone(value);
+const initialRoot = buildInitialRoot(initialData);
+
+function syncActiveWork(state: AppState, root: DocumentNode): Partial<AppState> {
+  if (!state.activeWorkId) return { root };
+  const syncedWorks = state.works.map((work) => work.id === state.activeWorkId ? { ...work, draftRoot: root, treeHash: simpleHash(JSON.stringify(root)) } : work);
+  localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(syncedWorks));
+  return { root, works: syncedWorks };
+}
+
+function requireActiveWork(state: AppState) {
+  if (state.activeWorkId) return true;
+  alert("Nejdřív založ nebo vyber revizi/změnu. Editace dokumentu probíhá pouze v rámci práce.");
+  return false;
+}
 
 function baseNode(type: NodeType, title: string, data: any, parentId: string | null): DocumentNode {
   return { id: data?.id || uid(type), parent_id: parentId, type, order: 1, number: "", title, children: [], data };
@@ -203,7 +230,7 @@ function chapterToNode(input: any, parentId: string | null): DocumentNode {
   const chapter = {
     id: data.id || uid("chapter"),
     cislo_kapitoly: data.cislo_kapitoly || "",
-    nazev: data.nazev || "Nová kapitola",
+    nazev: data.nazev || "NovĂˇ kapitola",
     html_obsah: data.html_obsah || "",
   };
   const node = baseNode("chapter", chapter.nazev, chapter, parentId);
@@ -229,14 +256,14 @@ function createNodeByType(type: CreatableNodeType, parentId: string | null): Doc
   const dataByType: Record<string, any> = {
     lpp: {
       id,
-      nazev: "Nové LPP",
+      nazev: "NovĂ© LPP",
       zneni: "",
       platnost: { id: `${id}.platnost`, rezimy: [], doplnujici_text: "", exportovana_hodnota: "" },
       extra_attributes: [],
     },
-    state: { id, nazev_stavu: "Nový stav", zneni_stavu: "", extra_attributes: [] },
+    state: { id, nazev_stavu: "NovĂ˝ stav", zneni_stavu: "", extra_attributes: [] },
     activity: { id, zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] },
-    pk_item: { id, nazev: "Nové PK", zneni: "", frekvence: "", extra_attributes: [] },
+    pk_item: { id, nazev: "NovĂ© PK", zneni: "", frekvence: "", extra_attributes: [] },
   };
   if (BUILT_IN_OBJECT_TYPE_KEYS.includes(type)) return baseNode(type as NodeType, objectTypeLabel(type), dataByType[type], parentId);
   return baseNode("custom_object", objectTypeLabel(type), { id, objectTypeKey: type, title: objectTypeLabel(type), extra_attributes: [] }, parentId);
@@ -294,7 +321,7 @@ function nodeTitle(node: DocumentNode) {
   if (node.type === "lp") return node.data.nadpis || "LP";
   if (node.type === "lpp") return node.data.nazev || "LPP";
   if (node.type === "state") return node.data.nazev_stavu || "Stav";
-  if (node.type === "activity") return node.data.zneni_cinnosti || "Činnost";
+  if (node.type === "activity") return node.data.zneni_cinnosti || "ÄŚinnost";
   if (node.type === "pk_item") return node.data.nazev || "PK";
   if (node.type === "custom_object") return node.data.title || objectTypeLabel(node.data.objectTypeKey);
   return node.title;
@@ -365,7 +392,7 @@ function exportLp(node: DocumentNode): string {
   ).join("");
   const pk = lp.pk.map((item: any) => `<tr><td>${escapeHtml(item.nazev)}</td><td>${escapeHtml(item.zneni)}</td><td>${escapeHtml(item.frekvence)}</td></tr>`).join("");
   const children = node.children.map(exportNode).join("\n");
-  return `<section class="document-block lp" data-node-id="${node.id}"><h1>${node.number} ${escapeHtml(lp.nadpis || "")}</h1>${lpp}<h2>Činnosti</h2><table><thead><tr><th>STAV</th><th>POŽADOVANÁ ČINNOST</th><th>DOBA PROVEDENÍ</th></tr></thead><tbody>${states}</tbody></table><h2>PK</h2><table><thead><tr><th>Název</th><th>Znění PK</th><th>FREKVENCE</th></tr></thead><tbody>${pk}</tbody></table>${lp.doplnujici_informace || ""}</section>${children}`;
+  return `<section class="document-block lp" data-node-id="${node.id}"><h1>${node.number} ${escapeHtml(lp.nadpis || "")}</h1>${lpp}<h2>ÄŚinnosti</h2><table><thead><tr><th>STAV</th><th>POĹ˝ADOVANĂ ÄŚINNOST</th><th>DOBA PROVEDENĂŤ</th></tr></thead><tbody>${states}</tbody></table><h2>PK</h2><table><thead><tr><th>NĂˇzev</th><th>ZnÄ›nĂ­ PK</th><th>FREKVENCE</th></tr></thead><tbody>${pk}</tbody></table>${lp.doplnujici_informace || ""}</section>${children}`;
 }
 
 function exportGenericNode(node: DocumentNode): string {
@@ -406,10 +433,13 @@ function collectSelectedNodes(root: DocumentNode, selectedIds: Set<string>) {
 }
 
 const useDocStore = create<AppState>((set, get) => ({
-  root: buildInitialRoot(initialData),
-  selectedId: buildInitialRoot(initialData).children[0]?.id || "document-001",
+  root: initialRoot,
+  publishedRoot: initialRoot,
+  selectedId: initialRoot.children[0]?.id || "document-001",
   collapsed: {},
   selectedForExport: {},
+  works: loadControlWorks(initialRoot),
+  activeWorkId: null,
   references: (initialData as any).references || [],
   history: [],
   select: (id) => set({ selectedId: id }),
@@ -417,51 +447,62 @@ const useDocStore = create<AppState>((set, get) => ({
   toggleExportSelection: (id) => set((state) => ({ selectedForExport: { ...state.selectedForExport, [id]: !state.selectedForExport[id] } })),
   clearExportSelection: () => set({ selectedForExport: {} }),
   updateNodeData: (id, patch) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const node = findNode(root, id);
     if (node) {
       node.data = { ...node.data, ...patch };
       node.title = nodeTitle(node);
     }
-    return { root: recomputeNumbers(root), history: [`Upraven uzel ${id}`, ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), history: [`Upraven uzel ${id}`, ...state.history].slice(0, 20) };
   }),
   updateLp: (lpId, updater, label) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const node = findNode(root, lpId);
     if (node?.type === "lp") {
       updater(node.data);
       node.title = nodeTitle(node);
     }
-    return { root: recomputeNumbers(root), history: [label, ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), history: [label, ...state.history].slice(0, 20) };
   }),
   addChapter: (mode, anchorId) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const anchor = findNode(root, anchorId) || root.children[0];
     const parent = mode === "child" && anchor?.type === "chapter" ? anchor : findParent(root, anchor?.id || "") || root;
     const index = mode === "before" ? parent.children.findIndex((child) => child.id === anchor.id) : parent.children.findIndex((child) => child.id === anchor.id) + 1;
     const chapter = chapterToNode({}, parent.id);
     parent.children.splice(Math.max(0, index), 0, chapter);
-    return { root: recomputeNumbers(root), selectedId: chapter.id, history: ["Přidána kapitola", ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), selectedId: chapter.id, history: ["PĹ™idĂˇna kapitola", ...state.history].slice(0, 20) };
   }),
   addLp: (mode, anchorId) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const anchor = findNode(root, anchorId) || root.children[0];
     const parent = mode === "child" && anchor?.type === "chapter" ? anchor : findParent(root, anchor?.id || "") || root;
     const index = mode === "before" ? parent.children.findIndex((child) => child.id === anchor.id) : parent.children.findIndex((child) => child.id === anchor.id) + 1;
     const lp = lpToNode({}, parent.id);
     parent.children.splice(Math.max(0, index), 0, lp);
-    return { root: recomputeNumbers(root), selectedId: lp.id, history: ["Přidána LP", ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), selectedId: lp.id, history: ["PĹ™idĂˇna LP", ...state.history].slice(0, 20) };
   }),
   addChildObject: (parentId, type) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const parent = findNode(root, parentId) || root;
     const allowed = allowedChildTypes(parent);
     if (!allowed.includes(type)) return state;
     const child = createNodeByType(type, parent.id);
     parent.children.push(child);
-    return { root: recomputeNumbers(root), selectedId: child.id, history: [`Přidán objekt ${objectTypeLabel(type)}`, ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), selectedId: child.id, history: [`PĹ™idĂˇn objekt ${objectTypeLabel(type)}`, ...state.history].slice(0, 20) };
   }),
   deleteNode: (id) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const node = findNode(root, id);
     if (!node || node.type === "document") return state;
@@ -470,14 +511,16 @@ const useDocStore = create<AppState>((set, get) => ({
       const ids = new Set([node.id, node.data.id]);
       const hasRefs = state.references.some((ref) => ids.has(ref.id || "") || ids.has(ref.targetId || ""));
       if (hasRefs) {
-        alert("Mazání je zablokováno: na LP existují reference v API/DB.");
+        alert("MazĂˇnĂ­ je zablokovĂˇno: na LP existujĂ­ reference v API/DB.");
         return state;
       }
     }
     removeNode(root, id);
-    return { root: recomputeNumbers(root), selectedId: root.children[0]?.id || root.id, history: [`Odstraněn uzel ${id}`, ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), selectedId: root.children[0]?.id || root.id, history: [`OdstranÄ›n uzel ${id}`, ...state.history].slice(0, 20) };
   }),
   duplicateNode: (id) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const node = findNode(root, id);
     const parent = findParent(root, id);
@@ -491,9 +534,11 @@ const useDocStore = create<AppState>((set, get) => ({
     };
     reid(copy, parent.id);
     parent.children.splice(parent.children.findIndex((child) => child.id === id) + 1, 0, copy);
-    return { root: recomputeNumbers(root), selectedId: copy.id, history: ["Duplikován blok", ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), selectedId: copy.id, history: ["DuplikovĂˇn blok", ...state.history].slice(0, 20) };
   }),
   moveSibling: (id, direction) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const parent = findParent(root, id);
     if (!parent) return state;
@@ -501,9 +546,11 @@ const useDocStore = create<AppState>((set, get) => ({
     const next = index + direction;
     if (next < 0 || next >= parent.children.length) return state;
     parent.children = arrayMove(parent.children, index, next);
-    return { root: recomputeNumbers(root), history: ["Přesunut uzel", ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), history: ["PĹ™esunut uzel", ...state.history].slice(0, 20) };
   }),
   reorderSiblings: (activeId, overId) => set((state) => {
+    if (!requireActiveWork(state)) return state;
     const root = clone(state.root);
     const activeParent = findParent(root, activeId);
     const overParent = findParent(root, overId);
@@ -511,16 +558,74 @@ const useDocStore = create<AppState>((set, get) => ({
     const oldIndex = activeParent.children.findIndex((child) => child.id === activeId);
     const newIndex = activeParent.children.findIndex((child) => child.id === overId);
     activeParent.children = arrayMove(activeParent.children, oldIndex, newIndex);
-    return { root: recomputeNumbers(root), history: ["Přetažen uzel", ...state.history].slice(0, 20) };
+    const nextRoot = recomputeNumbers(root);
+    return { ...syncActiveWork(state, nextRoot), history: ["PĹ™etaĹľen uzel", ...state.history].slice(0, 20) };
   }),
+  addControlWork: (type) => set((state) => {
+    const nextNumber = state.works.filter((work) => work.type === type).length + 1;
+    const baseRoot = clone(state.publishedRoot);
+    const draftRoot = clone(state.publishedRoot);
+    const work: ControlWork = {
+      id: uid(type),
+      code: `${type === "revision" ? "R" : "Z"}${String(nextNumber).padStart(3, "0")}`,
+      type,
+      status: "draft",
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      note: "",
+      baseHash: simpleHash(JSON.stringify(baseRoot)),
+      treeHash: simpleHash(JSON.stringify(draftRoot)),
+      baseRoot,
+      draftRoot,
+      createdAt: new Date().toISOString(),
+      linkedReview: { confirmed: false, checkedNodeIds: [] },
+    };
+    const works = [work, ...state.works];
+    localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(works));
+    return { works, activeWorkId: work.id, root: draftRoot, selectedId: draftRoot.children[0]?.id || draftRoot.id, history: [`Založena ${type === "revision" ? "revize" : "změna"} ${work.code}`, ...state.history].slice(0, 20) };
+  }),
+  selectControlWork: (id) => set((state) => {
+    if (!id) return { activeWorkId: null, root: state.publishedRoot, selectedId: state.publishedRoot.children[0]?.id || state.publishedRoot.id };
+    const work = state.works.find((item) => item.id === id);
+    if (!work) return state;
+    return { activeWorkId: work.id, root: clone(work.draftRoot), selectedId: work.draftRoot.children[0]?.id || work.draftRoot.id };
+  }),
+  updateControlWork: (id, patch) => set((state) => {
+    const works = state.works.map((work) => work.id === id ? { ...work, ...patch } : work);
+    localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(works));
+    return { works };
+  }),
+  approveActiveWork: () => set((state) => {
+    const work = state.works.find((item) => item.id === state.activeWorkId);
+    if (!work) return state;
+    const publishedHash = simpleHash(JSON.stringify(state.publishedRoot));
+    if (publishedHash !== work.baseHash) {
+      const works = state.works.map((item) => item.id === work.id ? { ...item, conflict: "Publikovaný dokument se změnil od založení práce. Zkontroluj dopady a založ novou práci nebo obnov základ.", status: "draft" as const } : item);
+      localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(works));
+      alert("Nelze schválit: publikovaný dokument se změnil od založení této práce.");
+      return { works };
+    }
+    const publishedRoot = recomputeNumbers(clone(state.root));
+    const approvedWork = { ...work, draftRoot: publishedRoot, treeHash: simpleHash(JSON.stringify(publishedRoot)), status: "approved" as const, approvedAt: new Date().toISOString(), conflict: "" };
+    const works = state.works.map((item) => item.id === work.id ? approvedWork : item);
+    localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(works));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ root: publishedRoot, references: state.references }));
+    return { works, publishedRoot, root: publishedRoot, activeWorkId: null, selectedId: publishedRoot.children[0]?.id || publishedRoot.id, history: [`Schváleno ${work.code}`, ...state.history].slice(0, 20) };
+  }),
+  cancelActiveWork: () => set((state) => ({ activeWorkId: null, root: state.publishedRoot, selectedId: state.publishedRoot.children[0]?.id || state.publishedRoot.id })),
   save: () => {
     const state = get();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ root: state.root, references: state.references }));
+    if (state.activeWorkId) {
+      const synced = syncActiveWork(state, state.root);
+      if (synced.works) set({ works: synced.works });
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ root: state.publishedRoot, references: state.references }));
   },
   reset: () => {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(CONTROL_STORAGE_KEY);
     const root = buildInitialRoot(initialData);
-    set({ root, selectedId: root.children[0]?.id || root.id, collapsed: {}, selectedForExport: {}, history: ["Reset na importovaná data"] });
+    set({ root, publishedRoot: root, works: [], activeWorkId: null, selectedId: root.children[0]?.id || root.id, collapsed: {}, selectedForExport: {}, history: ["Reset na importovanĂˇ data"] });
   },
 }));
 
@@ -540,9 +645,10 @@ function App() {
       <TopToolbar mode={mode} onModeChange={setMode} metadataOpen={metadataOpen} onToggleMetadata={() => setMetadataOpen((open) => !open)} />
       {mode === "builder" ? <BuilderWorkspace /> : mode === "preview" ? <PreviewWorkspace root={root} /> : <div className={metadataOpen ? "layout" : "layout metadata-collapsed"}>
         <aside className="sidebar">
+          <DocumentControlPanel />
           <div className="panel-head">
             <div className="panel-title"><ListTree size={18} /> Strom dokumentu</div>
-            <p>Stabilní ID zůstává, čísla se přepočítávají podle stromu.</p>
+            <p>StabilnĂ­ ID zĹŻstĂˇvĂˇ, ÄŤĂ­sla se pĹ™epoÄŤĂ­tĂˇvajĂ­ podle stromu.</p>
           </div>
           <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={visible.filter(({ node }) => canDrag(node)).map(({ node }) => node.id)} strategy={verticalListSortingStrategy}>
@@ -558,41 +664,42 @@ function App() {
 }
 
 function TopToolbar({ mode, onModeChange, metadataOpen, onToggleMetadata }: { mode: AppMode; onModeChange: (mode: AppMode) => void; metadataOpen: boolean; onToggleMetadata: () => void }) {
-  const { selectedId, selectedForExport, clearExportSelection, save, root } = useDocStore();
+  const { selectedId, selectedForExport, activeWorkId, works, clearExportSelection, save, root } = useDocStore();
   const selected = findNode(root, selectedId) || root;
+  const activeWork = works.find((work) => work.id === activeWorkId);
   const selectedExportIds = Object.entries(selectedForExport).filter(([, checked]) => checked).map(([id]) => id);
   const exportHtml = () => download("lp-export.html", buildExportHtml(root), "text/html;charset=utf-8");
   const exportDoc = () => download("lp-export.doc", buildExportHtml(root), "application/msword;charset=utf-8");
   const exportJson = () => download("lp-tree-export.json", JSON.stringify(root, null, 2), "application/json;charset=utf-8");
   const exportSelectedHtml = () => {
-    if (!selectedExportIds.length) return alert("Nejdřív označ objekty pro export ve stromu.");
+    if (!selectedExportIds.length) return alert("NejdĹ™Ă­v oznaÄŤ objekty pro export ve stromu.");
     download("lp-export-selected.html", buildExportHtml(root, new Set(selectedExportIds)), "text/html;charset=utf-8");
   };
   const exportSelectedJson = () => {
-    if (!selectedExportIds.length) return alert("Nejdřív označ objekty pro export ve stromu.");
+    if (!selectedExportIds.length) return alert("NejdĹ™Ă­v oznaÄŤ objekty pro export ve stromu.");
     download("lp-export-selected.json", JSON.stringify(collectSelectedNodes(root, new Set(selectedExportIds)), null, 2), "application/json;charset=utf-8");
   };
   return (
     <header className="topbar">
       <div className="brand">
-        <strong>{mode === "document" ? "Editor LP" : mode === "preview" ? "Náhled dokumentů" : "Builder editoru"}</strong>
-        <span>{mode === "document" ? "Stromovy dokumentovy editor" : mode === "preview" ? "Revize, změny, bloky a platnosti" : "Skladani vlastnich editoru z komponent a funkci"}</span>
+        <strong>{mode === "document" ? "Editor LP" : mode === "preview" ? "NĂˇhled dokumentĹŻ" : "Builder editoru"}</strong>
+        <span>{mode === "document" ? activeWork ? `Editace v rĂˇmci ${activeWork.code}` : "PublikovanĂ˝ dokument je read-only. ZaloĹľ nebo vyber revizi/zmÄ›nu." : mode === "preview" ? "Revize, zmÄ›ny, bloky a platnosti" : "Skladani vlastnich editoru z komponent a funkci"}</span>
       </div>
       <div className="toolbar">
         <div className="mode-switch">
           <button className={mode === "document" ? "active" : ""} onClick={() => onModeChange("document")}><FileText size={16} /> Dokument</button>
-          <button className={mode === "preview" ? "active" : ""} onClick={() => onModeChange("preview")}><BookOpen size={16} /> Náhled</button>
+          <button className={mode === "preview" ? "active" : ""} onClick={() => onModeChange("preview")}><BookOpen size={16} /> NĂˇhled</button>
           <button className={mode === "builder" ? "active" : ""} onClick={() => onModeChange("builder")}><Settings size={16} /> Builder</button>
         </div>
         {mode === "document" ? <>
           <AddChildMenu parent={selected} />
-          <button onClick={save}><Save size={16} /> Uložit</button>
+          <button onClick={save}><Save size={16} /> UloĹľit</button>
           <button onClick={exportJson}><Download size={16} /> JSON</button>
           <button onClick={exportHtml}><Download size={16} /> HTML</button>
-          <button onClick={exportSelectedHtml}><Download size={16} /> Vybrané HTML ({selectedExportIds.length})</button>
-          <button onClick={exportSelectedJson}><Download size={16} /> Vybrané JSON</button>
+          <button onClick={exportSelectedHtml}><Download size={16} /> VybranĂ© HTML ({selectedExportIds.length})</button>
+          <button onClick={exportSelectedJson}><Download size={16} /> VybranĂ© JSON</button>
           <button onClick={exportDoc}><Download size={16} /> DOC</button>
-          {selectedExportIds.length ? <button onClick={clearExportSelection}>Zrušit výběr</button> : null}
+          {selectedExportIds.length ? <button onClick={clearExportSelection}>ZruĹˇit vĂ˝bÄ›r</button> : null}
           <button onClick={onToggleMetadata}>{metadataOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />} Metadata</button>
         </> : null}
       </div>
@@ -612,7 +719,7 @@ function AddChildMenu({ parent }: { parent: DocumentNode }) {
   };
   return (
     <label className="compact-select">
-      <span>Přidat pod {parent.type === "document" ? "dokument" : parent.title}</span>
+      <span>PĹ™idat pod {parent.type === "document" ? "dokument" : parent.title}</span>
       <select value={value} onChange={(event) => { setValue(event.target.value); add(event.target.value); }}>
         <option value="">Vybrat objekt...</option>
         {options.map((type) => <option key={type} value={type}>{objectTypeLabel(type)}</option>)}
@@ -622,25 +729,30 @@ function AddChildMenu({ parent }: { parent: DocumentNode }) {
 }
 
 function PreviewWorkspace({ root }: { root: DocumentNode }) {
+  const { works, publishedRoot } = useDocStore();
   const [selectedRegime, setSelectedRegime] = React.useState(1);
   const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
   const [soloBlockId, setSoloBlockId] = React.useState<string | null>(null);
-  const blocks = getPreviewBlocks(root);
+  const [asOfDate, setAsOfDate] = React.useState(new Date().toISOString().slice(0, 10));
+  const effectiveRoot = getEffectiveRoot(publishedRoot, works, asOfDate);
+  const blocks = getPreviewBlocks(effectiveRoot);
   const activeBlock = blocks.find((block) => block.id === (soloBlockId || selectedBlockId)) || blocks[0];
   const lps = activeBlock ? collectLpNodes(activeBlock).filter((node) => lpHasRegime(node.data, selectedRegime)) : [];
   return (
     <div className="preview-shell">
       <aside className="preview-control">
-        <DocumentControlPanel root={root} />
+        <DocumentControlPanel />
       </aside>
       <main className="preview-main">
         <div className="preview-header">
           <div>
-            <h1>Limity a podmínky bezpečného provozu</h1>
-            <p>{soloBlockId ? `Samostatný dokument: ${activeBlock?.title}` : `Přehled LP pro režim ${selectedRegime}`}</p>
+            <h1>Limity a podmĂ­nky bezpeÄŤnĂ©ho provozu</h1>
+            <p>{soloBlockId ? `SamostatnĂ˝ dokument: ${activeBlock?.title}` : `PĹ™ehled LP pro reĹľim ${selectedRegime}`} · stav k {asOfDate}</p>
           </div>
-          {soloBlockId ? <button onClick={() => setSoloBlockId(null)}>Zpět na přehled</button> : null}
+          <label className="field compact-date"><span>Zobrazit k datu</span><input type="date" value={asOfDate} onChange={(event) => setAsOfDate(event.target.value)} /></label>
+          {soloBlockId ? <button onClick={() => setSoloBlockId(null)}>ZpÄ›t na pĹ™ehled</button> : null}
         </div>
+        <RevisionTimeline works={works} asOfDate={asOfDate} />
         <div className="block-tabs">
           {blocks.map((block, index) => (
             <button key={block.id} className={(activeBlock?.id === block.id ? "active " : "") + "block-tab"} onClick={() => { setSelectedBlockId(block.id); setSoloBlockId(block.id); }}>
@@ -659,92 +771,72 @@ function PreviewWorkspace({ root }: { root: DocumentNode }) {
   );
 }
 
-function DocumentControlPanel({ root }: { root: DocumentNode }) {
-  const [works, setWorks] = React.useState<ControlWork[]>(loadControlWorks);
-  const [selectedId, setSelectedId] = React.useState(works[0]?.id || "");
-  const selected = works.find((work) => work.id === selectedId) || works[0];
-  const persist = (next: ControlWork[]) => {
-    setWorks(next);
-    localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(next));
-  };
-  const addWork = (type: "revision" | "change") => {
-    const nextNumber = works.filter((work) => work.type === type).length + 1;
-    const work: ControlWork = {
-      id: uid(type),
-      code: `${type === "revision" ? "R" : "Z"}${String(nextNumber).padStart(3, "0")}`,
-      type,
-      status: "draft",
-      effectiveDate: new Date().toISOString().slice(0, 10),
-      note: "",
-      treeHash: simpleHash(JSON.stringify(root)),
-      createdAt: new Date().toISOString(),
-    };
-    persist([work, ...works]);
-    setSelectedId(work.id);
-  };
-  const updateSelected = (patch: Partial<ControlWork>) => {
-    persist(works.map((work) => work.id === selected.id ? { ...work, ...patch } : work));
-  };
-  const approveSelected = () => {
-    if (!selected) return;
-    updateSelected({ status: "approved", approvedAt: new Date().toISOString(), treeHash: simpleHash(JSON.stringify(root)) });
-  };
+function DocumentControlPanel() {
+  const { works, activeWorkId, root, publishedRoot, addControlWork, selectControlWork, updateControlWork, approveActiveWork, cancelActiveWork } = useDocStore();
+  const selected = works.find((work) => work.id === activeWorkId) || works[0];
   const stats = {
     approved: works.filter((work) => work.status === "approved").length,
     draft: works.filter((work) => work.status === "draft").length,
     changed: selected ? selected.treeHash !== simpleHash(JSON.stringify(root)) : false,
+    conflict: selected?.conflict,
   };
   return (
     <section className="control-panel">
       <div className="control-head">
         <div>
-          <h2>Revize a změny</h2>
-          <p>Evidence práce nad aktuálním stromem dokumentu.</p>
+          <h2>Revize a zmÄ›ny</h2>
+          <p>Evidence prĂˇce nad aktuĂˇlnĂ­m stromem dokumentu.</p>
         </div>
         <div className="inline-actions">
-          <button onClick={() => addWork("revision")}>+ R</button>
-          <button className="primary" onClick={() => addWork("change")}>+ Z</button>
+          <button onClick={() => addControlWork("revision")}>+ R</button>
+          <button className="primary" onClick={() => addControlWork("change")}>+ Z</button>
         </div>
       </div>
       <div className="control-stats">
-        <span className="badge neutral">{stats.approved} schváleno</span>
+        <span className="badge neutral">{stats.approved} schvĂˇleno</span>
         <span className="badge neutral">{stats.draft} draft</span>
-        {stats.changed ? <span className="badge neutral">strom změněn</span> : null}
+        {stats.changed ? <span className="badge neutral">strom zmÄ›nÄ›n</span> : null}
+        {stats.conflict ? <span className="badge neutral">konflikt</span> : null}
       </div>
       <div className="work-list compact">
         {works.map((work) => (
-          <button key={work.id} className={work.id === selected?.id ? "work-card active" : "work-card"} onClick={() => setSelectedId(work.id)}>
+          <button key={work.id} className={work.id === activeWorkId ? "work-card active" : "work-card"} onClick={() => selectControlWork(work.id)}>
             <span className="work-code">{work.code}</span>
             <span className={`badge ${work.status}`}>{work.status}</span>
-            <span className="muted">{work.type === "revision" ? "revize" : "změna"} · {work.effectiveDate}</span>
+            <span className="muted">{work.type === "revision" ? "revize" : "zmÄ›na"} Â· {work.effectiveDate}</span>
           </button>
         ))}
       </div>
       {selected ? (
         <div className="control-editor">
           <div className="grid-2">
-            <Field label="Číslo" value={selected.code} onChange={(value) => updateSelected({ code: value })} />
-            <Field label="Účinnost" value={selected.effectiveDate} onChange={(value) => updateSelected({ effectiveDate: value })} />
+            <Field label="ÄŚĂ­slo" value={selected.code} onChange={(value) => updateControlWork(selected.id, { code: value })} />
+            <Field label="ĂšÄŤinnost" value={selected.effectiveDate} onChange={(value) => updateControlWork(selected.id, { effectiveDate: value })} />
           </div>
           <label className="field">
             <span>Stav</span>
-            <select value={selected.status} onChange={(event) => updateSelected({ status: event.target.value as ControlWork["status"] })}>
+            <select value={selected.status} onChange={(event) => updateControlWork(selected.id, { status: event.target.value as ControlWork["status"] })}>
               <option value="draft">draft</option>
               <option value="approved">approved</option>
               <option value="cancelled">cancelled</option>
             </select>
           </label>
-          <Textarea label="Poznámka / popis změny" value={selected.note} onChange={(value) => updateSelected({ note: value })} />
+          <Textarea label="PoznĂˇmka / popis zmÄ›ny" value={selected.note} onChange={(value) => updateControlWork(selected.id, { note: value })} />
           <div className="hash">hash dokumentu: {selected.treeHash}</div>
-          <button className="primary" disabled={selected.status === "approved"} onClick={approveSelected}>Schválit</button>
+          <div className="hash">publikovaný hash: {simpleHash(JSON.stringify(publishedRoot))}</div>
+          {selected.conflict ? <div className="warning">{selected.conflict}</div> : null}
+          <div className="inline-actions">
+            <button className="primary" disabled={selected.status === "approved" || selected.id !== activeWorkId} onClick={approveActiveWork}>SchvĂˇlit</button>
+            {activeWorkId ? <button onClick={cancelActiveWork}>Zpět na publikovaný dokument</button> : null}
+          </div>
         </div>
-      ) : <div className="empty">Zatím není založená revize ani změna.</div>}
+      ) : <div className="empty">ZatĂ­m nenĂ­ zaloĹľenĂˇ revize ani zmÄ›na.</div>}
     </section>
   );
 }
 
 function RegimeOverview({ block, lps, selectedRegime }: { block: DocumentNode | undefined; lps: DocumentNode[]; selectedRegime: number }) {
-  if (!block) return <div className="empty">Dokument zatím nemá bloky.</div>;
+  if (!block) return <div className="empty">Dokument zatĂ­m nemĂˇ bloky.</div>;
   const columns = chunk(lps, 3);
   return (
     <div className="regime-overview">
@@ -752,7 +844,7 @@ function RegimeOverview({ block, lps, selectedRegime }: { block: DocumentNode | 
         <div className="overview-column" key={columnIndex}>
           {column.map((lp, index) => (
             <section className="overview-section" key={lp.id}>
-              <h3>{block.title} – LP {lp.data.cislo_lp || lp.number || index + 1}</h3>
+              <h3>{block.title} â€“ LP {lp.data.cislo_lp || lp.number || index + 1}</h3>
               <ul>
                 <li><strong>{lp.data.nadpis || lp.title}</strong></li>
                 {(lp.data.lpp || []).filter((lpp: any) => lpp.platnost?.rezimy?.includes(selectedRegime)).map((lpp: any) => (
@@ -763,7 +855,7 @@ function RegimeOverview({ block, lps, selectedRegime }: { block: DocumentNode | 
           ))}
         </div>
       ))}
-      {!lps.length ? <div className="empty">Pro režim {selectedRegime} nejsou v tomto bloku žádné LP.</div> : null}
+      {!lps.length ? <div className="empty">Pro reĹľim {selectedRegime} nejsou v tomto bloku ĹľĂˇdnĂ© LP.</div> : null}
     </div>
   );
 }
@@ -774,7 +866,7 @@ function SoloBlockDocument({ block }: { block: DocumentNode }) {
   return (
     <div className="solo-document">
       <h2>{block.title}</h2>
-      <p className="muted">Samostatný dokument bloku se svými kapitolami a LP.</p>
+      <p className="muted">SamostatnĂ˝ dokument bloku se svĂ˝mi kapitolami a LP.</p>
       {chapters.map((chapter) => (
         <section className="doc-chapter" key={chapter.id}>
           <h3>{chapter.number} {chapter.title}</h3>
@@ -789,6 +881,29 @@ function SoloBlockDocument({ block }: { block: DocumentNode }) {
       ))}
     </div>
   );
+}
+
+function RevisionTimeline({ works, asOfDate }: { works: ControlWork[]; asOfDate: string }) {
+  const approved = works
+    .filter((work) => work.status === "approved")
+    .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate) || a.code.localeCompare(b.code));
+  return (
+    <div className="preview-timeline">
+      {approved.length ? approved.map((work) => (
+        <span key={work.id} className={work.effectiveDate <= asOfDate ? "timeline-pill active" : "timeline-pill"}>
+          {work.code} · {work.effectiveDate}
+        </span>
+      )) : <span className="muted">Zatím není schválená žádná revize nebo změna.</span>}
+    </div>
+  );
+}
+
+function getEffectiveRoot(publishedRoot: DocumentNode, works: ControlWork[], asOfDate: string) {
+  const effective = works
+    .filter((work) => work.status === "approved" && work.effectiveDate <= asOfDate)
+    .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate) || a.code.localeCompare(b.code));
+  const selected = effective[effective.length - 1];
+  return selected?.draftRoot || publishedRoot;
 }
 
 function getPreviewBlocks(root: DocumentNode) {
@@ -814,12 +929,29 @@ function chunk<T>(items: T[], columnCount: number) {
   return columns;
 }
 
-function loadControlWorks(): ControlWork[] {
+function loadControlWorks(fallbackRoot: DocumentNode): ControlWork[] {
   const saved = localStorage.getItem(CONTROL_STORAGE_KEY);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.map((work: Partial<ControlWork>) => ({
+          id: work.id || uid("work"),
+          code: work.code || "Z000",
+          type: work.type || "change",
+          status: work.status || "draft",
+          effectiveDate: work.effectiveDate || new Date().toISOString().slice(0, 10),
+          note: work.note || "",
+          baseRoot: work.baseRoot || fallbackRoot,
+          draftRoot: work.draftRoot || fallbackRoot,
+          baseHash: work.baseHash || simpleHash(JSON.stringify(work.baseRoot || fallbackRoot)),
+          treeHash: work.treeHash || simpleHash(JSON.stringify(work.draftRoot || fallbackRoot)),
+          createdAt: work.createdAt || new Date().toISOString(),
+          approvedAt: work.approvedAt,
+          conflict: work.conflict || "",
+          linkedReview: work.linkedReview || { confirmed: false, checkedNodeIds: [] },
+        }));
+      }
     } catch {
       localStorage.removeItem(CONTROL_STORAGE_KEY);
     }
@@ -986,7 +1118,7 @@ function PackageStudio({ definition, onChange, onExport }: { definition: Package
   const hierarchySummary = definition.assets.hierarchyRules.map((rule) => {
     const parent = definition.assets.objectTypes.find((type) => type.key === rule.parentObjectTypeKey)?.name || rule.parentObjectTypeKey;
     const children = rule.allowedChildObjectTypeKeys.map((key) => definition.assets.objectTypes.find((type) => type.key === key)?.name || key).join(", ");
-    return `${parent} → ${children || "žádný potomek"}`;
+    return `${parent} â†’ ${children || "ĹľĂˇdnĂ˝ potomek"}`;
   });
   const uploadTemplate = (file: File | undefined) => {
     if (!file) return;
@@ -1016,17 +1148,17 @@ function PackageStudio({ definition, onChange, onExport }: { definition: Package
           <div><span>Package</span><strong>{definition.name}</strong></div>
           <div><span>Key</span><code>{definition.key}</code></div>
           <div><span>Verze</span><strong>{definition.version}</strong></div>
-          <div><span>Assety</span><strong>{definition.assets.objectTypes.length} objektů / {definition.assets.attributeTypes.length} atributů</strong></div>
+          <div><span>Assety</span><strong>{definition.assets.objectTypes.length} objektĹŻ / {definition.assets.attributeTypes.length} atributĹŻ</strong></div>
         </div>
         <div className="hierarchy-preview">
-          <strong>Hierarchická pravidla</strong>
+          <strong>HierarchickĂˇ pravidla</strong>
           {hierarchySummary.map((item) => <p key={item}>{item}</p>)}
         </div>
         <JsonObjectEditor label="Package JSON" value={definition} emptyValue={definition} onChange={(value) => onChange(value as PackageDefinition)} />
         <div className="inline-actions">
-          <button onClick={() => templateInputRef.current?.click()}><Plus size={16} /> Nahrát exportní šablonu</button>
+          <button onClick={() => templateInputRef.current?.click()}><Plus size={16} /> NahrĂˇt exportnĂ­ Ĺˇablonu</button>
           <input ref={templateInputRef} className="hidden-input" type="file" accept=".html,.htm,.txt,.json,.doc" onChange={(event) => uploadTemplate(event.target.files?.[0])} />
-          <span className="muted">{(definition.assets.exportTemplates || []).length} šablon v package</span>
+          <span className="muted">{(definition.assets.exportTemplates || []).length} Ĺˇablon v package</span>
         </div>
         <div className="inline-actions">
           <button onClick={onExport}><Download size={16} /> Export package JSON</button>
@@ -1284,7 +1416,7 @@ function TreeRow({ node, level }: { node: DocumentNode; level: number }) {
   return (
     <div ref={sortable.setNodeRef} style={style} className={`tree-row ${selectedId === node.id ? "selected" : ""}`} onClick={() => select(node.id)}>
       <div className="tree-main" style={{ paddingLeft: 8 + level * 16 }}>
-        <input className="export-check" type="checkbox" checked={Boolean(selectedForExport[node.id])} onChange={(event) => { event.stopPropagation(); toggleExportSelection(node.id); }} onClick={(event) => event.stopPropagation()} title="Zahrnout do výběrového exportu" />
+        <input className="export-check" type="checkbox" checked={Boolean(selectedForExport[node.id])} onChange={(event) => { event.stopPropagation(); toggleExportSelection(node.id); }} onClick={(event) => event.stopPropagation()} title="Zahrnout do vĂ˝bÄ›rovĂ©ho exportu" />
         <button className="icon tiny" onClick={(e) => { e.stopPropagation(); toggle(node.id); }}>
           {hasChildren ? (collapsed[node.id] ? <ChevronRight size={14} /> : <ChevronDown size={14} />) : <span />}
         </button>
@@ -1295,8 +1427,8 @@ function TreeRow({ node, level }: { node: DocumentNode; level: number }) {
         <Badge type={node.type} />
       </div>
       <div className="row-menu" onClick={(e) => e.stopPropagation()}>
-        <button onClick={() => moveSibling(node.id, -1)}>↑</button>
-        <button onClick={() => moveSibling(node.id, 1)}>↓</button>
+        <button onClick={() => moveSibling(node.id, -1)}>â†‘</button>
+        <button onClick={() => moveSibling(node.id, 1)}>â†“</button>
         {(node.type === "chapter" || node.type === "lp") && <button onClick={() => duplicateNode(node.id)}>Duplikovat</button>}
         <AddChildMenu parent={node} />
         <button className="danger-text" onClick={() => deleteNode(node.id)}>Smazat</button>
@@ -1326,29 +1458,29 @@ function GenericObjectEditor({ node }: { node: DocumentNode }) {
       <Card title={NODE_TYPE_LABELS[node.type as CreatableNodeType] || node.title} badge={node.type.toUpperCase()}>
         {node.type === "lpp" ? <>
           <div className="grid-2">
-            <Field label="Název LPP" value={node.data.nazev || ""} onChange={(value) => patch({ nazev: value })} />
-            <Textarea label="Znění LPP" value={node.data.zneni || ""} onChange={(value) => patch({ zneni: value })} />
+            <Field label="NĂˇzev LPP" value={node.data.nazev || ""} onChange={(value) => patch({ nazev: value })} />
+            <Textarea label="ZnÄ›nĂ­ LPP" value={node.data.zneni || ""} onChange={(value) => patch({ zneni: value })} />
           </div>
           <ValidityRow lpp={node.data} onChange={(platnost) => patch({ platnost })} />
         </> : null}
         {node.type === "state" ? <div className="grid-2">
-          <Field label="Název stavu" value={node.data.nazev_stavu || ""} onChange={(value) => patch({ nazev_stavu: value })} />
-          <Textarea label="Znění stavu" value={node.data.zneni_stavu || ""} onChange={(value) => patch({ zneni_stavu: value })} />
+          <Field label="NĂˇzev stavu" value={node.data.nazev_stavu || ""} onChange={(value) => patch({ nazev_stavu: value })} />
+          <Textarea label="ZnÄ›nĂ­ stavu" value={node.data.zneni_stavu || ""} onChange={(value) => patch({ zneni_stavu: value })} />
         </div> : null}
         {node.type === "activity" ? <div className="activity-row generic-activity">
-          <Textarea label="Znění činnosti" value={node.data.zneni_cinnosti || ""} onChange={(value) => patch({ zneni_cinnosti: value })} />
+          <Textarea label="ZnÄ›nĂ­ ÄŤinnosti" value={node.data.zneni_cinnosti || ""} onChange={(value) => patch({ zneni_cinnosti: value })} />
           <Field label="Doba" value={node.data.doba_provedeni || ""} list="doba-list" onChange={(value) => patch({ doba_provedeni: value })} />
-          <label className="field"><span>Operátor</span><select value={node.data.operator || ""} onChange={(e) => patch({ operator: e.target.value })}><option value="" /><option>A</option><option>NEBO</option></select></label>
-          <Segmented label="Odsazení" value={node.data.operator_indentation || 1} onChange={(value) => patch({ operator_indentation: value })} />
+          <label className="field"><span>OperĂˇtor</span><select value={node.data.operator || ""} onChange={(e) => patch({ operator: e.target.value })}><option value="" /><option>A</option><option>NEBO</option></select></label>
+          <Segmented label="OdsazenĂ­" value={node.data.operator_indentation || 1} onChange={(value) => patch({ operator_indentation: value })} />
         </div> : null}
         {node.type === "pk_item" ? <div className="pk-row">
-          <Field label="Název" value={node.data.nazev || ""} onChange={(value) => patch({ nazev: value })} />
-          <Textarea label="Znění" value={node.data.zneni || ""} onChange={(value) => patch({ zneni: value })} />
+          <Field label="NĂˇzev" value={node.data.nazev || ""} onChange={(value) => patch({ nazev: value })} />
+          <Textarea label="ZnÄ›nĂ­" value={node.data.zneni || ""} onChange={(value) => patch({ zneni: value })} />
           <Field label="Frekvence" value={node.data.frekvence || ""} list="frekvence-list" onChange={(value) => patch({ frekvence: value })} />
         </div> : null}
         {node.type === "custom_object" ? <div className="grid-2">
           <Field label="Typ objektu" value={node.data.objectTypeKey || ""} onChange={(value) => patch({ objectTypeKey: value })} />
-          <Field label="Název objektu" value={node.data.title || ""} onChange={(value) => patch({ title: value })} />
+          <Field label="NĂˇzev objektu" value={node.data.title || ""} onChange={(value) => patch({ title: value })} />
         </div> : null}
         <CustomAttributesEditor value={node.data.extra_attributes || []} onChange={(extra) => patch({ extra_attributes: extra })} />
       </Card>
@@ -1363,8 +1495,8 @@ function ChapterEditor({ node }: { node: DocumentNode }) {
       <HeaderCard node={node} />
       <Card title="Kapitola" badge="KAPITOLA">
         <div className="grid-2">
-          <Field label="Číslo kapitoly" value={node.data.cislo_kapitoly || node.number} onChange={(value) => update(node.id, { cislo_kapitoly: value })} />
-          <Field label="Název kapitoly" value={node.data.nazev} onChange={(value) => update(node.id, { nazev: value })} />
+          <Field label="ÄŚĂ­slo kapitoly" value={node.data.cislo_kapitoly || node.number} onChange={(value) => update(node.id, { cislo_kapitoly: value })} />
+          <Field label="NĂˇzev kapitoly" value={node.data.nazev} onChange={(value) => update(node.id, { nazev: value })} />
         </div>
         <RichText value={node.data.html_obsah} onChange={(html) => update(node.id, { html_obsah: html })} />
       </Card>
@@ -1380,9 +1512,9 @@ function LpEditor({ node }: { node: DocumentNode }) {
     <section className="detail-stack">
       <HeaderCard node={node} />
       {lp.parserWarnings?.length ? <ParserWarnings warnings={lp.parserWarnings} /> : null}
-      <Card title="Základ LP" badge="LP">
+      <Card title="ZĂˇklad LP" badge="LP">
         <div className="grid-2">
-          <Field label="Číslo LP" value={lp.cislo_lp || node.number} onChange={(value) => update((draft) => { draft.cislo_lp = value; })} />
+          <Field label="ÄŚĂ­slo LP" value={lp.cislo_lp || node.number} onChange={(value) => update((draft) => { draft.cislo_lp = value; })} />
           <Field label="Nadpis LP" value={lp.nadpis} onChange={(value) => update((draft) => { draft.nadpis = value; })} />
         </div>
       </Card>
@@ -1390,8 +1522,8 @@ function LpEditor({ node }: { node: DocumentNode }) {
         {lp.lpp.map((lpp: any, index: number) => (
           <Card key={lpp.id} title={lpp.nazev || `LPP ${index + 1}`} badge="LPP">
             <div className="grid-2">
-              <Field label="Název LPP" value={lpp.nazev} onChange={(value) => update((draft) => { draft.lpp[index].nazev = value; })} />
-              <Textarea label="Znění LPP" value={lpp.zneni} onChange={(value) => update((draft) => { draft.lpp[index].zneni = value; })} />
+              <Field label="NĂˇzev LPP" value={lpp.nazev} onChange={(value) => update((draft) => { draft.lpp[index].nazev = value; })} />
+              <Textarea label="ZnÄ›nĂ­ LPP" value={lpp.zneni} onChange={(value) => update((draft) => { draft.lpp[index].zneni = value; })} />
             </div>
             <ValidityRow lpp={lpp} onChange={(next) => update((draft) => { draft.lpp[index].platnost = next; })} />
             <CustomAttributesEditor value={lpp.extra_attributes || []} onChange={(extra) => update((draft) => { draft.lpp[index].extra_attributes = extra; })} />
@@ -1408,30 +1540,30 @@ function LpEditor({ node }: { node: DocumentNode }) {
             platnost: { id: uid("validity"), rezimy: [], doplnujici_text: "", exportovana_hodnota: "" },
             extra_attributes: [],
           });
-        })}><Plus size={16} /> Přidat LPP</button>
+        })}><Plus size={16} /> PĹ™idat LPP</button>
       </Accordion>
-      <Accordion title="Činnosti" defaultOpen>
+      <Accordion title="ÄŚinnosti" defaultOpen>
         {lp.cinnosti.map((state: any, stateIndex: number) => (
           <Card key={state.id} title={`${state.nazev_stavu || "Stav"} ${stateIndex + 1}`} badge="STAV">
             <div className="grid-2">
-              <Field label="Název stavu" value={state.nazev_stavu} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].nazev_stavu = value; })} />
-              <Textarea label="Znění stavu" value={state.zneni_stavu} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].zneni_stavu = value; })} />
+              <Field label="NĂˇzev stavu" value={state.nazev_stavu} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].nazev_stavu = value; })} />
+              <Textarea label="ZnÄ›nĂ­ stavu" value={state.zneni_stavu} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].zneni_stavu = value; })} />
             </div>
             <div className="activity-list">
               {state.cinnosti.map((activity: any, activityIndex: number) => (
                 <div className="activity-row" key={activity.id}>
                   <div className="order-badge">{activityIndex + 1}</div>
-                  <Textarea label="Znění činnosti" value={activity.zneni_cinnosti} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].cinnosti[activityIndex].zneni_cinnosti = value; })} />
+                  <Textarea label="ZnÄ›nĂ­ ÄŤinnosti" value={activity.zneni_cinnosti} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].cinnosti[activityIndex].zneni_cinnosti = value; })} />
                   <Field label="Doba" value={activity.doba_provedeni} list="doba-list" onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].cinnosti[activityIndex].doba_provedeni = value; })} />
-                  <label className="field"><span>Operátor</span><select value={activity.operator} onChange={(e) => update((draft) => { draft.cinnosti[stateIndex].cinnosti[activityIndex].operator = e.target.value; })}><option value="" /><option>A</option><option>NEBO</option></select></label>
-                  <Segmented label="Odsazení" value={activity.operator_indentation || 1} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].cinnosti[activityIndex].operator_indentation = value; })} />
+                  <label className="field"><span>OperĂˇtor</span><select value={activity.operator} onChange={(e) => update((draft) => { draft.cinnosti[stateIndex].cinnosti[activityIndex].operator = e.target.value; })}><option value="" /><option>A</option><option>NEBO</option></select></label>
+                  <Segmented label="OdsazenĂ­" value={activity.operator_indentation || 1} onChange={(value) => update((draft) => { draft.cinnosti[stateIndex].cinnosti[activityIndex].operator_indentation = value; })} />
                 </div>
               ))}
             </div>
             <CustomAttributesEditor value={state.extra_attributes || []} onChange={(extra) => update((draft) => { draft.cinnosti[stateIndex].extra_attributes = extra; })} />
             <div className="inline-actions">
-              <button onClick={() => update((draft) => { draft.cinnosti[stateIndex].cinnosti.push({ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1 }); })}>Přidat činnost</button>
-              <button onClick={() => update((draft) => { draft.cinnosti.splice(stateIndex + 1, 0, { id: uid("state"), nazev_stavu: "", zneni_stavu: "", extra_attributes: [], cinnosti: [{ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] }] }); })}>Přidat stav</button>
+              <button onClick={() => update((draft) => { draft.cinnosti[stateIndex].cinnosti.push({ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1 }); })}>PĹ™idat ÄŤinnost</button>
+              <button onClick={() => update((draft) => { draft.cinnosti.splice(stateIndex + 1, 0, { id: uid("state"), nazev_stavu: "", zneni_stavu: "", extra_attributes: [], cinnosti: [{ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] }] }); })}>PĹ™idat stav</button>
               <button className="danger-text" onClick={() => update((draft) => { draft.cinnosti.splice(stateIndex, 1); })}>Smazat stav</button>
             </div>
           </Card>
@@ -1444,21 +1576,21 @@ function LpEditor({ node }: { node: DocumentNode }) {
             extra_attributes: [],
             cinnosti: [{ id: uid("activity"), zneni_cinnosti: "", doba_provedeni: "", operator: "", operator_indentation: 1, extra_attributes: [] }],
           });
-        })}><Plus size={16} /> Přidat stav / blok činností</button>
+        })}><Plus size={16} /> PĹ™idat stav / blok ÄŤinnostĂ­</button>
       </Accordion>
       <Accordion title="PK" defaultOpen>
-        <Card title="Položky PK" badge="PK">
+        <Card title="PoloĹľky PK" badge="PK">
           {lp.pk.map((pk: any, index: number) => (
             <div className="pk-row" key={pk.id}>
-              <Field label="Název" value={pk.nazev} onChange={(value) => update((draft) => { draft.pk[index].nazev = value; })} />
-              <Textarea label="Znění" value={pk.zneni} onChange={(value) => update((draft) => { draft.pk[index].zneni = value; })} />
+              <Field label="NĂˇzev" value={pk.nazev} onChange={(value) => update((draft) => { draft.pk[index].nazev = value; })} />
+              <Textarea label="ZnÄ›nĂ­" value={pk.zneni} onChange={(value) => update((draft) => { draft.pk[index].zneni = value; })} />
               <Field label="Frekvence" value={pk.frekvence} list="frekvence-list" onChange={(value) => update((draft) => { draft.pk[index].frekvence = value; })} />
             </div>
           ))}
-          <button onClick={() => update((draft) => { draft.pk.push({ id: uid("pk"), nazev: "", zneni: "", frekvence: "" }); })}>Přidat PK</button>
+          <button onClick={() => update((draft) => { draft.pk.push({ id: uid("pk"), nazev: "", zneni: "", frekvence: "" }); })}>PĹ™idat PK</button>
         </Card>
       </Accordion>
-      <Accordion title="Doplňující informace">
+      <Accordion title="DoplĹujĂ­cĂ­ informace">
         <Card title="Rich-text obsah" badge="HTML">
           <RichText value={lp.doplnujici_informace} onChange={(html) => update((draft) => { draft.doplnujici_informace = html; })} />
         </Card>
@@ -1471,10 +1603,10 @@ function HeaderCard({ node }: { node: DocumentNode }) {
   return (
     <Card title={node.title} badge={node.type === "chapter" ? "KAPITOLA" : node.type.toUpperCase()}>
       <div className="metadata-grid">
-        <div><span>Číslo</span><strong>{node.number || "-"}</strong></div>
-        <div><span>Interní ID</span><code>{node.id}</code></div>
+        <div><span>ÄŚĂ­slo</span><strong>{node.number || "-"}</strong></div>
+        <div><span>InternĂ­ ID</span><code>{node.id}</code></div>
         <div><span>Parent</span><code>{node.parent_id || "-"}</code></div>
-        <div><span>Pořadí</span><strong>{node.order}</strong></div>
+        <div><span>PoĹ™adĂ­</span><strong>{node.order}</strong></div>
       </div>
     </Card>
   );
@@ -1489,13 +1621,13 @@ function RightPanel({ node }: { node: DocumentNode | null }) {
         <div className="panel-title"><Braces size={18} /> Metadata</div>
       </div>
       <div className="right-content">
-        <div className="meta-card"><span>ID</span><code>{node.id}</code><button onClick={() => navigator.clipboard?.writeText(node.id)}><Copy size={14} /> Kopírovat</button></div>
+        <div className="meta-card"><span>ID</span><code>{node.id}</code><button onClick={() => navigator.clipboard?.writeText(node.id)}><Copy size={14} /> KopĂ­rovat</button></div>
         <div className="meta-card"><span>Typ</span><Badge type={node.type} /></div>
-        <div className="meta-card"><span>Číslo</span><strong>{node.number || "-"}</strong></div>
+        <div className="meta-card"><span>ÄŚĂ­slo</span><strong>{node.number || "-"}</strong></div>
         <div className="meta-card"><span>Reference API</span><code>{`LP_ATTRIBUTE_API.makeReference("${node.id}")`}</code></div>
         <div className="meta-card">
           <span><History size={14} /> Historie</span>
-          {history.length ? history.map((item, index) => <p key={index}>{item}</p>) : <p>Zatím bez změn.</p>}
+          {history.length ? history.map((item, index) => <p key={index}>{item}</p>) : <p>ZatĂ­m bez zmÄ›n.</p>}
         </div>
       </div>
     </aside>
@@ -1527,13 +1659,13 @@ function CustomAttributesEditor({ value, onChange }: { value: Array<{ id: string
   return (
     <div className="custom-attributes">
       <div className="subhead">
-        <strong>Doplňkové atributy</strong>
-        <button onClick={() => onChange([...(value || []), { id: uid("attr"), key: "", label: "", value: "" }])}><Plus size={16} /> Přidat atribut</button>
+        <strong>DoplĹkovĂ© atributy</strong>
+        <button onClick={() => onChange([...(value || []), { id: uid("attr"), key: "", label: "", value: "" }])}><Plus size={16} /> PĹ™idat atribut</button>
       </div>
       {(value || []).map((attr, index) => (
         <div className="custom-attribute-row" key={attr.id}>
-          <Field label="Klíč" value={attr.key} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, key: next } : item))} />
-          <Field label="Název" value={attr.label} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, label: next } : item))} />
+          <Field label="KlĂ­ÄŤ" value={attr.key} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, key: next } : item))} />
+          <Field label="NĂˇzev" value={attr.label} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, label: next } : item))} />
           <Textarea label="Hodnota" value={attr.value} onChange={(next) => onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, value: next } : item))} />
           <button className="danger-text" onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}>Smazat</button>
         </div>
@@ -1557,16 +1689,16 @@ function ValidityRow({ lpp, onChange }: { lpp: any; onChange: (value: any) => vo
   const preview = formatPlatnost(validity);
   return (
     <div className="validity-row">
-      <strong>REŽIM:</strong>
+      <strong>REĹ˝IM:</strong>
       <div className="mode-group">{[1, 2, 3, 4, 5, 6].map((mode) => <button key={mode} type="button" className={validity.rezimy?.includes(mode) ? "active" : ""} onClick={() => toggle(mode)}>{mode}</button>)}</div>
-      <Field label="Doplňující text" value={validity.doplnujici_text || ""} onChange={(value) => onChange({ ...validity, doplnujici_text: value })} />
+      <Field label="DoplĹujĂ­cĂ­ text" value={validity.doplnujici_text || ""} onChange={(value) => onChange({ ...validity, doplnujici_text: value })} />
       <div className="validity-preview">{preview}</div>
     </div>
   );
 }
 
 function ParserWarnings({ warnings }: { warnings: string[] }) {
-  return <Card title="Vyžaduje kontrolu" badge="PARSER">{warnings.map((warning) => <div className="warning" key={warning}><AlertTriangle size={16} /> {warning}</div>)}</Card>;
+  return <Card title="VyĹľaduje kontrolu" badge="PARSER">{warnings.map((warning) => <div className="warning" key={warning}><AlertTriangle size={16} /> {warning}</div>)}</Card>;
 }
 
 function RichText({ value, onChange }: { value: string; onChange: (html: string) => void }) {
@@ -1580,11 +1712,11 @@ function RichText({ value, onChange }: { value: string; onChange: (html: string)
   }, [editor, value]);
   if (!editor) return null;
   const addImage = () => {
-    const url = prompt("URL obrázku nebo data URL:");
+    const url = prompt("URL obrĂˇzku nebo data URL:");
     if (url) editor.chain().focus().setImage({ src: url }).run();
   };
   const addFormula = () => {
-    const formula = prompt("Vzorec:", "E = mc²");
+    const formula = prompt("Vzorec:", "E = mcÂ˛");
     if (formula) editor.chain().focus().insertContent(`<span class="formula">\\(${escapeHtml(formula)}\\)</span>`).run();
   };
   return (
@@ -1593,11 +1725,11 @@ function RichText({ value, onChange }: { value: string; onChange: (html: string)
         <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
         <button onClick={() => editor.chain().focus().toggleBold().run()}><strong>B</strong></button>
         <button onClick={() => editor.chain().focus().toggleItalic().run()}><em>I</em></button>
-        <button onClick={() => editor.chain().focus().toggleBulletList().run()}>•</button>
+        <button onClick={() => editor.chain().focus().toggleBulletList().run()}>â€˘</button>
         <button onClick={() => editor.chain().focus().toggleOrderedList().run()}>1.</button>
         <button onClick={() => editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).run()}>Tabulka</button>
         <button onClick={addFormula}>Vzorec</button>
-        <button onClick={addImage}>Obrázek</button>
+        <button onClick={addImage}>ObrĂˇzek</button>
       </div>
       <EditorContent editor={editor} className="rich-editor" />
     </div>
@@ -1606,8 +1738,8 @@ function RichText({ value, onChange }: { value: string; onChange: (html: string)
 
 function formatPlatnost(platnost: any) {
   const regimes = [...(platnost.rezimy || [])].sort((a: number, b: number) => a - b);
-  const prefix = regimes.length ? `Režim ${regimes.join(", ")}` : "";
-  return prefix && platnost.doplnujici_text ? `${prefix} – ${platnost.doplnujici_text}` : prefix || platnost.doplnujici_text || "";
+  const prefix = regimes.length ? `ReĹľim ${regimes.join(", ")}` : "";
+  return prefix && platnost.doplnujici_text ? `${prefix} â€“ ${platnost.doplnujici_text}` : prefix || platnost.doplnujici_text || "";
 }
 
 function download(filename: string, text: string, type: string) {
@@ -1635,3 +1767,5 @@ function escapeScriptJson(value: string) {
 };
 
 ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+
+
