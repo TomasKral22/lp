@@ -675,8 +675,15 @@ code {
 }
 
 .overview-section {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
   border: 1px solid #d3ddd8;
+  border-radius: 0;
   background: #f7faf8;
+  color: inherit;
+  text-align: left;
 }
 
 .overview-section h3 {
@@ -688,11 +695,69 @@ code {
   text-transform: uppercase;
 }
 
+.overview-section.chapter h3 {
+  background: linear-gradient(90deg, #6d5bd0, #8f7be4);
+}
+
+.overview-section p {
+  margin: 8px 10px 10px;
+  color: #20352c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .overview-section ul {
   margin: 7px 0 9px 20px;
   font-family: Consolas, "Courier New", monospace;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.preview-detail {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 2px solid #6f8b80;
+  background: #f7faf8;
+}
+
+.preview-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.preview-detail-head h2 {
+  margin: 6px 0 0;
+  font-size: 20px;
+}
+
+.preview-rich {
+  padding: 12px;
+  border: 1px solid #d3ddd8;
+  background: white;
+}
+
+.readonly-lp {
+  display: grid;
+  gap: 12px;
+}
+
+.readonly-lp h3 {
+  margin: 0 0 8px;
+}
+
+.readonly-block {
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 1px solid #d3ddd8;
+  background: white;
+}
+
+.readonly-block p {
+  white-space: pre-wrap;
 }
 
 .solo-document {
@@ -708,6 +773,14 @@ code {
   padding: 14px;
   border: 1px solid var(--line);
   background: white;
+}
+
+.doc-chapter.clickable {
+  cursor: pointer;
+}
+
+.doc-chapter.clickable:hover {
+  border-color: var(--accent);
 }
 
 .control-panel {
