@@ -536,6 +536,224 @@ code {
   padding: 16px;
 }
 
+.preview-shell {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr) 66px;
+  gap: 16px;
+  min-height: calc(100vh - 74px);
+  padding: 16px;
+  background: #c7d4cd;
+}
+
+.preview-control,
+.preview-main,
+.regime-rail {
+  border: 1px solid #6f8b80;
+  background: #edf3f0;
+  box-shadow: var(--shadow);
+}
+
+.preview-control {
+  overflow: auto;
+}
+
+.preview-main {
+  min-width: 0;
+  padding: 14px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 4px 2px 12px;
+}
+
+.preview-header h1 {
+  margin: 0;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 22px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 #fff;
+}
+
+.preview-header p {
+  margin: 6px 0 0;
+  color: #315145;
+}
+
+.block-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #6f8b80;
+}
+
+.block-tab {
+  min-width: 92px;
+  border-radius: 0;
+  border-color: #315d4c;
+  background: linear-gradient(#7fb494, #4f8767);
+  color: white;
+  font-weight: 800;
+}
+
+.block-tab.active {
+  background: linear-gradient(#dce8e1, #80b595);
+  color: #0b1d16;
+}
+
+.regime-rail {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 10px;
+}
+
+.regime-rail button {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 0;
+  border-color: #315d4c;
+  background: linear-gradient(#8dc2a0, #518a68);
+  color: white;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.regime-rail button.active {
+  color: #0b1d16;
+  background: linear-gradient(#dce8e1, #8dc2a0);
+}
+
+.regime-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.overview-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 400px;
+  padding: 6px;
+  border: 1px solid #9aafa6;
+  background: #eef4f1;
+}
+
+.overview-section {
+  border: 1px solid #d3ddd8;
+  background: #f7faf8;
+}
+
+.overview-section h3 {
+  margin: 0;
+  padding: 6px 8px;
+  background: linear-gradient(90deg, #4f8767, #75a987);
+  color: white;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.overview-section ul {
+  margin: 7px 0 9px 20px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.solo-document {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #9aafa6;
+  background: #f7faf8;
+}
+
+.doc-chapter {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.control-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.control-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.control-head h2 {
+  margin: 0;
+}
+
+.control-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.control-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.work-list.compact {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.work-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px;
+}
+
+.work-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.work-code {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-list.compact .work-card {
+  display: grid;
+  justify-items: start;
+  width: 100%;
+  text-align: left;
+}
+
+.control-editor {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.hash {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+}
+
 .builder-sidebar,
 .builder-preview {
   position: sticky;
@@ -849,6 +1067,20 @@ code {
     grid-template-columns: 280px minmax(0, 1fr);
   }
 
+  .preview-shell {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+
+  .regime-rail {
+    grid-column: 1 / -1;
+    display: flex;
+    overflow: auto;
+  }
+
+  .regime-overview {
+    grid-template-columns: 1fr;
+  }
+
   .right-panel,
   .builder-preview {
     position: static;
@@ -869,6 +1101,7 @@ code {
   .topbar,
   .layout,
   .builder-layout,
+  .preview-shell,
   .grid-2,
   .metadata-grid,
   .validity-row,
@@ -913,6 +1146,10 @@ code {
   .builder-sidebar,
   .builder-preview {
     position: static;
+    max-height: none;
+  }
+
+  .preview-control {
     max-height: none;
   }
 }

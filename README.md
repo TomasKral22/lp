@@ -130,6 +130,29 @@ Atributy maji pripravenou konfiguraci pro naseptavac pres `suggestions`:
 
 HTML / JS atributy: schema podporuje `htmlMode` a `expressionLanguage`. Volny JavaScript se zatim v prohlizeci nespousti. Je ulozen jako konfigurace pro pozdejsi sandboxovane vyhodnoceni.
 
+## Revize, zmeny a nahled
+
+Horni lista ma rezimy:
+
+- `Dokument`: editace aktualnich dat
+- `Nahled`: read-only nahled, revize/zmeny, bloky a filtry platnosti
+- `Builder`: package/editor konfigurace
+
+V rezimu `Nahled`:
+
+- panel vlevo eviduje revize a zmeny
+- lze zalozit `+ R` nebo `+ Z`
+- prace ma cislo, typ, stav, datum ucinnosti, poznamku a hash aktualniho stromu
+- schvaleni ulozi aktualni hash dokumentu
+- samotna data se porad edituji v rezimu `Dokument`
+
+Blokovy nahled:
+
+- horni tlacitka `BLOK 1`, `BLOK 2`, ... odpovidaji top-level kapitolam/blokum
+- klik na blok otevira samostatny dokument daneho bloku
+- pravy pruh `1-7` filtruje LP podle rezimu v `LPP.platnost.rezimy`
+- v tabulkovem prehledu se zobrazi jen LP, ktera maji vybrany rezim v alespon jednom LPP
+
 LP editor ma v sekcich:
 
 - tlacitko pro pridani dalsiho LPP

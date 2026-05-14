@@ -79,7 +79,18 @@ type DocumentNode<T = any> = {
 
 type Lp = any;
 type Reference = { id?: string; targetId?: string; valid?: boolean };
-type AppMode = "document" | "builder";
+type AppMode = "document" | "preview" | "builder";
+type ControlWork = {
+  id: string;
+  code: string;
+  type: "revision" | "change";
+  status: "draft" | "approved" | "cancelled";
+  effectiveDate: string;
+  note: string;
+  treeHash: string;
+  createdAt: string;
+  approvedAt?: string;
+};
 type CreatableNodeType = string;
 
 type AppState = {
@@ -107,6 +118,7 @@ type AppState = {
 };
 
 const STORAGE_KEY = "lp-tree-editor-structure-v2";
+const CONTROL_STORAGE_KEY = "lp-document-control-v1";
 const OPERATOR_INDENT_SPACES: Record<number, number> = { 1: 0, 2: 4, 3: 8 };
 const BUILT_IN_OBJECT_TYPE_KEYS = ["chapter", "lp", "lpp", "state", "activity", "pk_item"];
 const NODE_TYPE_LABELS: Record<string, string> = {
@@ -526,7 +538,7 @@ function App() {
   return (
     <div className="app-shell">
       <TopToolbar mode={mode} onModeChange={setMode} metadataOpen={metadataOpen} onToggleMetadata={() => setMetadataOpen((open) => !open)} />
-      {mode === "builder" ? <BuilderWorkspace /> : <div className={metadataOpen ? "layout" : "layout metadata-collapsed"}>
+      {mode === "builder" ? <BuilderWorkspace /> : mode === "preview" ? <PreviewWorkspace root={root} /> : <div className={metadataOpen ? "layout" : "layout metadata-collapsed"}>
         <aside className="sidebar">
           <div className="panel-head">
             <div className="panel-title"><ListTree size={18} /> Strom dokumentu</div>
@@ -563,12 +575,13 @@ function TopToolbar({ mode, onModeChange, metadataOpen, onToggleMetadata }: { mo
   return (
     <header className="topbar">
       <div className="brand">
-        <strong>{mode === "document" ? "Editor LP" : "Builder editoru"}</strong>
-        <span>{mode === "document" ? "Stromovy dokumentovy editor" : "Skladani vlastnich editoru z komponent a funkci"}</span>
+        <strong>{mode === "document" ? "Editor LP" : mode === "preview" ? "Náhled dokumentů" : "Builder editoru"}</strong>
+        <span>{mode === "document" ? "Stromovy dokumentovy editor" : mode === "preview" ? "Revize, změny, bloky a platnosti" : "Skladani vlastnich editoru z komponent a funkci"}</span>
       </div>
       <div className="toolbar">
         <div className="mode-switch">
           <button className={mode === "document" ? "active" : ""} onClick={() => onModeChange("document")}><FileText size={16} /> Dokument</button>
+          <button className={mode === "preview" ? "active" : ""} onClick={() => onModeChange("preview")}><BookOpen size={16} /> Náhled</button>
           <button className={mode === "builder" ? "active" : ""} onClick={() => onModeChange("builder")}><Settings size={16} /> Builder</button>
         </div>
         {mode === "document" ? <>
@@ -606,6 +619,221 @@ function AddChildMenu({ parent }: { parent: DocumentNode }) {
       </select>
     </label>
   );
+}
+
+function PreviewWorkspace({ root }: { root: DocumentNode }) {
+  const [selectedRegime, setSelectedRegime] = React.useState(1);
+  const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
+  const [soloBlockId, setSoloBlockId] = React.useState<string | null>(null);
+  const blocks = getPreviewBlocks(root);
+  const activeBlock = blocks.find((block) => block.id === (soloBlockId || selectedBlockId)) || blocks[0];
+  const lps = activeBlock ? collectLpNodes(activeBlock).filter((node) => lpHasRegime(node.data, selectedRegime)) : [];
+  return (
+    <div className="preview-shell">
+      <aside className="preview-control">
+        <DocumentControlPanel root={root} />
+      </aside>
+      <main className="preview-main">
+        <div className="preview-header">
+          <div>
+            <h1>Limity a podmínky bezpečného provozu</h1>
+            <p>{soloBlockId ? `Samostatný dokument: ${activeBlock?.title}` : `Přehled LP pro režim ${selectedRegime}`}</p>
+          </div>
+          {soloBlockId ? <button onClick={() => setSoloBlockId(null)}>Zpět na přehled</button> : null}
+        </div>
+        <div className="block-tabs">
+          {blocks.map((block, index) => (
+            <button key={block.id} className={(activeBlock?.id === block.id ? "active " : "") + "block-tab"} onClick={() => { setSelectedBlockId(block.id); setSoloBlockId(block.id); }}>
+              BLOK {index + 1}
+            </button>
+          ))}
+        </div>
+        {soloBlockId && activeBlock ? <SoloBlockDocument block={activeBlock} /> : <RegimeOverview block={activeBlock} lps={lps} selectedRegime={selectedRegime} />}
+      </main>
+      <aside className="regime-rail">
+        {[1, 2, 3, 4, 5, 6, 7].map((regime) => (
+          <button key={regime} className={selectedRegime === regime ? "active" : ""} onClick={() => setSelectedRegime(regime)}>{regime}</button>
+        ))}
+      </aside>
+    </div>
+  );
+}
+
+function DocumentControlPanel({ root }: { root: DocumentNode }) {
+  const [works, setWorks] = React.useState<ControlWork[]>(loadControlWorks);
+  const [selectedId, setSelectedId] = React.useState(works[0]?.id || "");
+  const selected = works.find((work) => work.id === selectedId) || works[0];
+  const persist = (next: ControlWork[]) => {
+    setWorks(next);
+    localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(next));
+  };
+  const addWork = (type: "revision" | "change") => {
+    const nextNumber = works.filter((work) => work.type === type).length + 1;
+    const work: ControlWork = {
+      id: uid(type),
+      code: `${type === "revision" ? "R" : "Z"}${String(nextNumber).padStart(3, "0")}`,
+      type,
+      status: "draft",
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      note: "",
+      treeHash: simpleHash(JSON.stringify(root)),
+      createdAt: new Date().toISOString(),
+    };
+    persist([work, ...works]);
+    setSelectedId(work.id);
+  };
+  const updateSelected = (patch: Partial<ControlWork>) => {
+    persist(works.map((work) => work.id === selected.id ? { ...work, ...patch } : work));
+  };
+  const approveSelected = () => {
+    if (!selected) return;
+    updateSelected({ status: "approved", approvedAt: new Date().toISOString(), treeHash: simpleHash(JSON.stringify(root)) });
+  };
+  const stats = {
+    approved: works.filter((work) => work.status === "approved").length,
+    draft: works.filter((work) => work.status === "draft").length,
+    changed: selected ? selected.treeHash !== simpleHash(JSON.stringify(root)) : false,
+  };
+  return (
+    <section className="control-panel">
+      <div className="control-head">
+        <div>
+          <h2>Revize a změny</h2>
+          <p>Evidence práce nad aktuálním stromem dokumentu.</p>
+        </div>
+        <div className="inline-actions">
+          <button onClick={() => addWork("revision")}>+ R</button>
+          <button className="primary" onClick={() => addWork("change")}>+ Z</button>
+        </div>
+      </div>
+      <div className="control-stats">
+        <span className="badge neutral">{stats.approved} schváleno</span>
+        <span className="badge neutral">{stats.draft} draft</span>
+        {stats.changed ? <span className="badge neutral">strom změněn</span> : null}
+      </div>
+      <div className="work-list compact">
+        {works.map((work) => (
+          <button key={work.id} className={work.id === selected?.id ? "work-card active" : "work-card"} onClick={() => setSelectedId(work.id)}>
+            <span className="work-code">{work.code}</span>
+            <span className={`badge ${work.status}`}>{work.status}</span>
+            <span className="muted">{work.type === "revision" ? "revize" : "změna"} · {work.effectiveDate}</span>
+          </button>
+        ))}
+      </div>
+      {selected ? (
+        <div className="control-editor">
+          <div className="grid-2">
+            <Field label="Číslo" value={selected.code} onChange={(value) => updateSelected({ code: value })} />
+            <Field label="Účinnost" value={selected.effectiveDate} onChange={(value) => updateSelected({ effectiveDate: value })} />
+          </div>
+          <label className="field">
+            <span>Stav</span>
+            <select value={selected.status} onChange={(event) => updateSelected({ status: event.target.value as ControlWork["status"] })}>
+              <option value="draft">draft</option>
+              <option value="approved">approved</option>
+              <option value="cancelled">cancelled</option>
+            </select>
+          </label>
+          <Textarea label="Poznámka / popis změny" value={selected.note} onChange={(value) => updateSelected({ note: value })} />
+          <div className="hash">hash dokumentu: {selected.treeHash}</div>
+          <button className="primary" disabled={selected.status === "approved"} onClick={approveSelected}>Schválit</button>
+        </div>
+      ) : <div className="empty">Zatím není založená revize ani změna.</div>}
+    </section>
+  );
+}
+
+function RegimeOverview({ block, lps, selectedRegime }: { block: DocumentNode | undefined; lps: DocumentNode[]; selectedRegime: number }) {
+  if (!block) return <div className="empty">Dokument zatím nemá bloky.</div>;
+  const columns = chunk(lps, 3);
+  return (
+    <div className="regime-overview">
+      {columns.map((column, columnIndex) => (
+        <div className="overview-column" key={columnIndex}>
+          {column.map((lp, index) => (
+            <section className="overview-section" key={lp.id}>
+              <h3>{block.title} – LP {lp.data.cislo_lp || lp.number || index + 1}</h3>
+              <ul>
+                <li><strong>{lp.data.nadpis || lp.title}</strong></li>
+                {(lp.data.lpp || []).filter((lpp: any) => lpp.platnost?.rezimy?.includes(selectedRegime)).map((lpp: any) => (
+                  <li key={lpp.id}>{lpp.nazev}: {formatPlatnost(lpp.platnost)}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      ))}
+      {!lps.length ? <div className="empty">Pro režim {selectedRegime} nejsou v tomto bloku žádné LP.</div> : null}
+    </div>
+  );
+}
+
+function SoloBlockDocument({ block }: { block: DocumentNode }) {
+  const chapters = collectChapterNodes(block);
+  const lps = collectLpNodes(block);
+  return (
+    <div className="solo-document">
+      <h2>{block.title}</h2>
+      <p className="muted">Samostatný dokument bloku se svými kapitolami a LP.</p>
+      {chapters.map((chapter) => (
+        <section className="doc-chapter" key={chapter.id}>
+          <h3>{chapter.number} {chapter.title}</h3>
+          <div dangerouslySetInnerHTML={{ __html: chapter.data.html_obsah || "" }} />
+        </section>
+      ))}
+      {lps.map((lp) => (
+        <section className="doc-chapter" key={lp.id}>
+          <h3>{lp.data.cislo_lp || lp.number} {lp.data.nadpis}</h3>
+          <p>{(lp.data.lpp || []).map((lpp: any) => `${lpp.nazev}: ${formatPlatnost(lpp.platnost)}`).join("\n")}</p>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function getPreviewBlocks(root: DocumentNode) {
+  const topChapters = root.children.filter((node) => node.type === "chapter");
+  return topChapters.length ? topChapters : root.children.length ? root.children : [root];
+}
+
+function collectLpNodes(node: DocumentNode): DocumentNode[] {
+  return [node.type === "lp" ? node : null, ...node.children.flatMap(collectLpNodes)].filter(Boolean) as DocumentNode[];
+}
+
+function collectChapterNodes(node: DocumentNode): DocumentNode[] {
+  return [node.type === "chapter" ? node : null, ...node.children.flatMap(collectChapterNodes)].filter(Boolean) as DocumentNode[];
+}
+
+function lpHasRegime(lp: any, regime: number) {
+  return (lp.lpp || []).some((lpp: any) => (lpp.platnost?.rezimy || []).includes(regime));
+}
+
+function chunk<T>(items: T[], columnCount: number) {
+  const columns = Array.from({ length: columnCount }, () => [] as T[]);
+  items.forEach((item, index) => columns[index % columnCount].push(item));
+  return columns;
+}
+
+function loadControlWorks(): ControlWork[] {
+  const saved = localStorage.getItem(CONTROL_STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      localStorage.removeItem(CONTROL_STORAGE_KEY);
+    }
+  }
+  return [];
+}
+
+function simpleHash(text: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return (`00000000${(hash >>> 0).toString(16)}`).slice(-8);
 }
 
 function BuilderWorkspace() {
