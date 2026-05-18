@@ -605,21 +605,222 @@ code {
 }
 
 .timeline-pill {
-  display: inline-flex;
+  display: inline-grid;
+  gap: 2px;
   border: 1px solid #9aafa6;
-  border-radius: 999px;
-  padding: 4px 8px;
+  border-radius: 8px;
+  padding: 6px 9px;
   background: #f7faf8;
   color: #53665d;
   font-size: 12px;
 }
 
-.timeline-pill.active {
+.timeline-pill.current {
   border-color: #315d4c;
   background: #dce8e1;
   color: #0b1d16;
   font-weight: 700;
 }
+
+.timeline-pill.future {
+  border-color: #c58a18;
+  background: #fff5dc;
+  color: #644507;
+}
+
+.timeline-pill.draft {
+  border-color: #7d90a5;
+  background: #eef2f6;
+}
+
+.timeline-pill.archive {
+  border-color: #c9c9c9;
+  background: #f5f5f5;
+  color: #777;
+}
+
+.timeline-pill.revision {
+  border-color: #7a67d8;
+}
+
+.timeline-pill.selected {
+  outline: 2px solid #0f766e;
+  outline-offset: 1px;
+}
+
+.view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.view-switch button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.document-status,
+.work-table-panel,
+.work-detail-panel,
+.filter-panel {
+  margin-bottom: 12px;
+  border: 1px solid #9aafa6;
+  background: #f7faf8;
+  padding: 12px;
+}
+
+.document-status {
+  display: grid;
+  gap: 12px;
+}
+
+.document-status p,
+.work-detail-panel p {
+  margin: 5px 0 0;
+  color: #315145;
+}
+
+.state-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: #0f766e;
+}
+
+.state-dot.future { background: #d97706; }
+.state-dot.draft { background: #64748b; }
+.state-dot.archive { background: #9ca3af; }
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.status-grid div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #d3ddd8;
+  background: #fff;
+}
+
+.status-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.panel-row-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.panel-row-head span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.work-table {
+  display: grid;
+  gap: 4px;
+}
+
+.work-table-row {
+  display: grid;
+  grid-template-columns: 80px minmax(160px, 1fr) 100px 100px 140px 130px 120px;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.work-table-row.head {
+  padding: 8px 11px;
+  border: 0;
+  background: #dce8e1;
+  color: #315145;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.work-table-row.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.changed-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.changed-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border: 1px solid #d3ddd8;
+  border-radius: 999px;
+  background: #fff;
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.changed-pill.added { border-color: #86efac; background: #f0fdf4; }
+.changed-pill.changed { border-color: #facc15; background: #fefce8; }
+.changed-pill.removed { border-color: #fca5a5; background: #fef2f2; }
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mini-document {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #d3ddd8;
+  background: white;
+}
+
+.mini-document div {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.mini-document p {
+  white-space: pre-wrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.work-note {
+  padding: 10px;
+  border-left: 4px solid var(--accent);
+  background: #fff;
+}
+
+.badge.status-current { background: #dcfce7; color: #166534; border-color: #86efac; }
+.badge.status-future { background: #fef3c7; color: #92400e; border-color: #facc15; }
+.badge.status-draft { background: #eef2f6; color: #475569; border-color: #cbd5e1; }
+.badge.status-archive { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
 
 .block-tab {
   min-width: 92px;

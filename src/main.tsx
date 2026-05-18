@@ -80,11 +80,14 @@ type DocumentNode<T = any> = {
 type Lp = any;
 type Reference = { id?: string; targetId?: string; valid?: boolean };
 type AppMode = "document" | "preview" | "builder";
+type WorkflowStatus = "draft" | "review" | "commenting" | "approved" | "waiting_effective" | "effective" | "rejected" | "cancelled" | "archived";
 type ControlWork = {
   id: string;
   code: string;
   type: "revision" | "change";
-  status: "draft" | "approved" | "cancelled";
+  status: WorkflowStatus;
+  title: string;
+  owner: string;
   effectiveDate: string;
   note: string;
   baseHash: string;
@@ -133,6 +136,19 @@ type AppState = {
 const STORAGE_KEY = "lp-tree-editor-structure-v2";
 const CONTROL_STORAGE_KEY = "lp-document-control-v1";
 const OPERATOR_INDENT_SPACES: Record<number, number> = { 1: 0, 2: 4, 3: 8 };
+const WORKFLOW_STATUS_LABELS: Record<WorkflowStatus, string> = {
+  draft: "rozpracováno",
+  review: "předáno ke kontrole",
+  commenting: "v připomínkování",
+  approved: "schváleno",
+  waiting_effective: "čeká na účinnost",
+  effective: "účinné",
+  rejected: "zamítnuto",
+  cancelled: "zrušeno",
+  archived: "archivováno",
+};
+const WORKFLOW_STATUSES = Object.keys(WORKFLOW_STATUS_LABELS) as WorkflowStatus[];
+const FINAL_WORKFLOW_STATUSES: WorkflowStatus[] = ["approved", "waiting_effective", "effective", "archived"];
 const BUILT_IN_OBJECT_TYPE_KEYS = ["chapter", "lp", "lpp", "state", "activity", "pk_item"];
 const NODE_TYPE_LABELS: Record<string, string> = {
   chapter: "Kapitola",
@@ -570,6 +586,8 @@ const useDocStore = create<AppState>((set, get) => ({
       code: `${type === "revision" ? "R" : "Z"}${String(nextNumber).padStart(3, "0")}`,
       type,
       status: "draft",
+      title: type === "revision" ? `Revize ${nextNumber}` : `Změna ${nextNumber}`,
+      owner: "Neurčeno",
       effectiveDate: new Date().toISOString().slice(0, 10),
       note: "",
       baseHash: simpleHash(JSON.stringify(baseRoot)),
@@ -604,11 +622,14 @@ const useDocStore = create<AppState>((set, get) => ({
       alert("Nelze schválit: publikovaný dokument se změnil od založení této práce.");
       return { works };
     }
-    const publishedRoot = recomputeNumbers(clone(state.root));
-    const approvedWork = { ...work, draftRoot: publishedRoot, treeHash: simpleHash(JSON.stringify(publishedRoot)), status: "approved" as const, approvedAt: new Date().toISOString(), conflict: "" };
+    const approvedRoot = recomputeNumbers(clone(state.root));
+    const today = new Date().toISOString().slice(0, 10);
+    const status: WorkflowStatus = work.effectiveDate <= today ? "effective" : "waiting_effective";
+    const approvedWork = { ...work, draftRoot: approvedRoot, treeHash: simpleHash(JSON.stringify(approvedRoot)), status, approvedAt: new Date().toISOString(), conflict: "" };
     const works = state.works.map((item) => item.id === work.id ? approvedWork : item);
     localStorage.setItem(CONTROL_STORAGE_KEY, JSON.stringify(works));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ root: publishedRoot, references: state.references }));
+    const publishedRoot = work.effectiveDate <= today ? approvedRoot : state.publishedRoot;
+    if (work.effectiveDate <= today) localStorage.setItem(STORAGE_KEY, JSON.stringify({ root: publishedRoot, references: state.references }));
     return { works, publishedRoot, root: publishedRoot, activeWorkId: null, selectedId: publishedRoot.children[0]?.id || publishedRoot.id, history: [`Schváleno ${work.code}`, ...state.history].slice(0, 20) };
   }),
   cancelActiveWork: () => set((state) => ({ activeWorkId: null, root: state.publishedRoot, selectedId: state.publishedRoot.children[0]?.id || state.publishedRoot.id })),
@@ -734,12 +755,29 @@ function PreviewWorkspace({ root, onEditNode }: { root: DocumentNode; onEditNode
   const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
   const [soloBlockId, setSoloBlockId] = React.useState<string | null>(null);
   const [selectedDetailId, setSelectedDetailId] = React.useState<string | null>(null);
+  const [selectedWorkId, setSelectedWorkId] = React.useState<string | null>(null);
+  const [workView, setWorkView] = React.useState<"document" | "changes" | "timeline" | "detail" | "compare">("document");
+  const [workflowFilter, setWorkflowFilter] = React.useState<"all" | WorkflowStatus>("all");
+  const [typeFilter, setTypeFilter] = React.useState<"all" | "change" | "revision">("all");
+  const [temporalFilter, setTemporalFilter] = React.useState<"all" | "current" | "future" | "archive" | "draft">("all");
+  const [ownerFilter, setOwnerFilter] = React.useState("all");
   const [asOfDate, setAsOfDate] = React.useState(new Date().toISOString().slice(0, 10));
   const effectiveRoot = getEffectiveRoot(publishedRoot, works, asOfDate);
-  const displayRoot = activeWorkId ? root : effectiveRoot;
+  const selectedWork = selectedWorkId ? works.find((work) => work.id === selectedWorkId) || null : null;
+  const displayRoot = selectedWork ? selectedWork.draftRoot : activeWorkId ? root : effectiveRoot;
   const blocks = getPreviewBlocks(displayRoot);
   const activeBlock = blocks.find((block) => block.id === (soloBlockId || selectedBlockId)) || blocks[0];
   const selectedDetail = selectedDetailId ? findNode(displayRoot, selectedDetailId) : null;
+  const currentWork = getCurrentEffectiveWork(works, asOfDate);
+  const filteredWorks = filterWorks(works, { workflowFilter, typeFilter, temporalFilter, ownerFilter, asOfDate });
+  const owners = Array.from(new Set(works.map((work) => work.owner || "Neurčeno"))).sort((a, b) => a.localeCompare(b, "cs"));
+  const previewLabel = selectedWork
+    ? `Náhled po ${selectedWork.type === "revision" ? "revizi" : "změně"} ${selectedWork.code}`
+    : activeWorkId
+      ? "Rozpracovaná revize / změna"
+      : asOfDate === new Date().toISOString().slice(0, 10)
+        ? "Aktuálně účinná verze"
+        : `Budoucí nebo historický stav k datu ${formatDate(asOfDate)}`;
   const editSelectedDetail = () => {
     if (!selectedDetail) return;
     if (!activeWorkId) {
@@ -752,17 +790,41 @@ function PreviewWorkspace({ root, onEditNode }: { root: DocumentNode; onEditNode
     <div className="preview-shell">
       <aside className="preview-control">
         <DocumentControlPanel />
+        <WorkFilters
+          workflowFilter={workflowFilter}
+          typeFilter={typeFilter}
+          temporalFilter={temporalFilter}
+          ownerFilter={ownerFilter}
+          owners={owners}
+          onWorkflowFilter={setWorkflowFilter}
+          onTypeFilter={setTypeFilter}
+          onTemporalFilter={setTemporalFilter}
+          onOwnerFilter={setOwnerFilter}
+        />
       </aside>
       <main className="preview-main">
         <div className="preview-header">
           <div>
             <h1>Limity a podmínky bezpečného provozu</h1>
-            <p>{soloBlockId ? `Samostatný dokument: ${activeBlock?.title}` : `Přehled kapitol a LP pro režim ${selectedRegime}`} · stav k {asOfDate}</p>
+            <p>{previewLabel} · {soloBlockId ? `samostatný dokument: ${activeBlock?.title}` : `přehled kapitol a LP pro režim ${selectedRegime}`}</p>
           </div>
           <label className="field compact-date"><span>Zobrazit k datu</span><input type="date" value={asOfDate} onChange={(event) => setAsOfDate(event.target.value)} /></label>
           {soloBlockId ? <button onClick={() => setSoloBlockId(null)}>Zpět na přehled</button> : null}
         </div>
-        <RevisionTimeline works={works} asOfDate={asOfDate} />
+        <DocumentStatusSummary root={displayRoot} currentWork={currentWork} selectedWork={selectedWork} asOfDate={asOfDate} previewLabel={previewLabel} />
+        <div className="view-switch">
+          {[
+            ["document", "Detail dokumentu"],
+            ["changes", "Seznam změn"],
+            ["timeline", "Časová osa"],
+            ["detail", "Detail změny"],
+            ["compare", "Porovnání verzí"],
+          ].map(([value, label]) => <button key={value} className={workView === value ? "active" : ""} onClick={() => setWorkView(value as typeof workView)}>{label}</button>)}
+        </div>
+        <RevisionTimeline works={filteredWorks} asOfDate={asOfDate} selectedWorkId={selectedWorkId} onSelect={(id) => { setSelectedWorkId(id); setWorkView("detail"); }} />
+        {workView === "changes" ? <WorkList works={filteredWorks} selectedWorkId={selectedWorkId} asOfDate={asOfDate} onSelect={(id) => { setSelectedWorkId(id); setWorkView("detail"); }} /> : null}
+        {workView === "detail" ? <WorkDetail work={selectedWork} publishedRoot={publishedRoot} works={works} asOfDate={asOfDate} onBack={() => setWorkView("changes")} /> : null}
+        {workView === "compare" ? <ComparePanel work={selectedWork} publishedRoot={publishedRoot} works={works} asOfDate={asOfDate} /> : null}
         <div className="block-tabs">
           {blocks.map((block, index) => (
             <button key={block.id} className={(activeBlock?.id === block.id ? "active " : "") + "block-tab"} onClick={() => { setSelectedBlockId(block.id); setSoloBlockId(block.id); }}>
@@ -771,7 +833,7 @@ function PreviewWorkspace({ root, onEditNode }: { root: DocumentNode; onEditNode
           ))}
         </div>
         {selectedDetail ? <PreviewDetailPanel node={selectedDetail} onEdit={editSelectedDetail} /> : null}
-        {soloBlockId && activeBlock ? <SoloBlockDocument block={activeBlock} onSelectNode={setSelectedDetailId} /> : <RegimeOverview block={activeBlock} selectedRegime={selectedRegime} onSelectNode={setSelectedDetailId} />}
+        {workView === "document" ? soloBlockId && activeBlock ? <SoloBlockDocument block={activeBlock} onSelectNode={setSelectedDetailId} /> : <RegimeOverview block={activeBlock} selectedRegime={selectedRegime} onSelectNode={setSelectedDetailId} /> : null}
       </main>
       <aside className="regime-rail">
         {[1, 2, 3, 4, 5, 6, 7].map((regime) => (
@@ -782,11 +844,164 @@ function PreviewWorkspace({ root, onEditNode }: { root: DocumentNode; onEditNode
   );
 }
 
+function DocumentStatusSummary({ root, currentWork, selectedWork, asOfDate, previewLabel }: { root: DocumentNode; currentWork: ControlWork | null; selectedWork: ControlWork | null; asOfDate: string; previewLabel: string }) {
+  const lps = collectLpNodes(root).length;
+  const chapters = collectChapterNodes(root).length;
+  const status = selectedWork ? getWorkTemporalState(selectedWork, asOfDate) : currentWork ? "current" : "current";
+  return (
+    <section className="document-status">
+      <div>
+        <span className={`state-dot ${status}`}></span>
+        <strong>{previewLabel}</strong>
+        <p>Dokument · {chapters} kapitol · {lps} LP · stav k {formatDate(asOfDate)}</p>
+      </div>
+      <div className="status-grid">
+        <div><span>Aktuálně účinná změna</span><strong>{currentWork?.code || "základní verze"}</strong></div>
+        <div><span>Účinnost</span><strong>{currentWork ? formatDate(currentWork.effectiveDate) : "bez data"}</strong></div>
+        <div><span>Workflow</span><strong>{selectedWork ? workflowLabel(selectedWork.status) : "platný"}</strong></div>
+        <div><span>Vybráno</span><strong>{selectedWork ? `${selectedWork.code} · ${selectedWork.title}` : "aktuální dokument"}</strong></div>
+      </div>
+    </section>
+  );
+}
+
+function WorkFilters({ workflowFilter, typeFilter, temporalFilter, ownerFilter, owners, onWorkflowFilter, onTypeFilter, onTemporalFilter, onOwnerFilter }: {
+  workflowFilter: "all" | WorkflowStatus;
+  typeFilter: "all" | "change" | "revision";
+  temporalFilter: "all" | "current" | "future" | "archive" | "draft";
+  ownerFilter: string;
+  owners: string[];
+  onWorkflowFilter: (value: "all" | WorkflowStatus) => void;
+  onTypeFilter: (value: "all" | "change" | "revision") => void;
+  onTemporalFilter: (value: "all" | "current" | "future" | "archive" | "draft") => void;
+  onOwnerFilter: (value: string) => void;
+}) {
+  return (
+    <section className="control-panel filter-panel">
+      <h3>Filtry změn</h3>
+      <label className="field"><span>Workflow stav</span><select value={workflowFilter} onChange={(event) => onWorkflowFilter(event.target.value as "all" | WorkflowStatus)}>
+        <option value="all">vše</option>
+        {WORKFLOW_STATUSES.map((status) => <option key={status} value={status}>{workflowLabel(status)}</option>)}
+      </select></label>
+      <label className="field"><span>Typ</span><select value={typeFilter} onChange={(event) => onTypeFilter(event.target.value as "all" | "change" | "revision")}>
+        <option value="all">změny i revize</option>
+        <option value="change">změny</option>
+        <option value="revision">revize</option>
+      </select></label>
+      <label className="field"><span>Časový stav</span><select value={temporalFilter} onChange={(event) => onTemporalFilter(event.target.value as "all" | "current" | "future" | "archive" | "draft")}>
+        <option value="all">vše</option>
+        <option value="current">aktuální / účinné</option>
+        <option value="future">budoucí</option>
+        <option value="archive">archivní</option>
+        <option value="draft">rozpracované</option>
+      </select></label>
+      <label className="field"><span>Autor / odpovědná osoba</span><select value={ownerFilter} onChange={(event) => onOwnerFilter(event.target.value)}>
+        <option value="all">všichni</option>
+        {owners.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
+      </select></label>
+    </section>
+  );
+}
+
+function WorkList({ works, selectedWorkId, asOfDate, onSelect }: { works: ControlWork[]; selectedWorkId: string | null; asOfDate: string; onSelect: (id: string) => void }) {
+  const byEffectiveDate = [...works].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate) || a.code.localeCompare(b.code));
+  return (
+    <section className="work-table-panel">
+      <div className="panel-row-head">
+        <h2>Seznam změn a revizí</h2>
+        <span>Řazeno podle data účinnosti, ne podle čísla změny.</span>
+      </div>
+      <div className="work-table">
+        <div className="work-table-row head"><span>Číslo</span><span>Název</span><span>Vytvořeno</span><span>Účinnost</span><span>Workflow</span><span>Odpovědný</span><span>Stav</span></div>
+        {byEffectiveDate.map((work) => (
+          <button key={work.id} className={`work-table-row ${selectedWorkId === work.id ? "active" : ""}`} onClick={() => onSelect(work.id)}>
+            <span>{work.code}</span>
+            <span>{work.title}</span>
+            <span>{formatDate(work.createdAt.slice(0, 10))}</span>
+            <span>{formatDate(work.effectiveDate)}</span>
+            <span><WorkStatusBadge work={work} asOfDate={asOfDate} /></span>
+            <span>{work.owner || "Neurčeno"}</span>
+            <span>{temporalLabel(getWorkTemporalState(work, asOfDate))}</span>
+          </button>
+        ))}
+        {!byEffectiveDate.length ? <div className="empty">Filtru neodpovídá žádná změna nebo revize.</div> : null}
+      </div>
+    </section>
+  );
+}
+
+function WorkDetail({ work, publishedRoot, works, asOfDate, onBack }: { work: ControlWork | null; publishedRoot: DocumentNode; works: ControlWork[]; asOfDate: string; onBack: () => void }) {
+  if (!work) return <div className="empty">Vyber změnu nebo revizi ze seznamu nebo časové osy.</div>;
+  const touched = getChangedNodeSummaries(work.baseRoot, work.draftRoot);
+  const conflicts = getWorkConflicts(work, works);
+  const previewRoot = work.draftRoot;
+  return (
+    <section className="work-detail-panel">
+      <div className="preview-detail-head">
+        <div>
+          <span className={`badge ${work.type}`}>{work.type === "revision" ? "REVIZE" : "ZMĚNA"}</span>
+          <h2>{work.code} · {work.title}</h2>
+          <p>{workflowLabel(work.status)} · účinnost {formatDate(work.effectiveDate)} · odpovědný: {work.owner || "Neurčeno"}</p>
+        </div>
+        <button onClick={onBack}>Zpět na seznam</button>
+      </div>
+      <div className="status-grid">
+        <div><span>Datum vytvoření</span><strong>{formatDate(work.createdAt.slice(0, 10))}</strong></div>
+        <div><span>Vychází z verze</span><code>{work.baseHash}</code></div>
+        <div><span>Budoucí verze</span><code>{work.treeHash}</code></div>
+        <div><span>Časový stav</span><strong>{temporalLabel(getWorkTemporalState(work, asOfDate))}</strong></div>
+      </div>
+      <p className="work-note">{work.note || "Bez popisu změny."}</p>
+      {conflicts.length ? <div className="warning"><AlertTriangle size={16} /> Konflikt: {conflicts.join(" ")}</div> : null}
+      <div className="changed-list">
+        <strong>Dotčené části dokumentu</strong>
+        {touched.length ? touched.map((item) => <span key={item.id} className="changed-pill">{item.number || "-"} {item.title} · {item.change}</span>) : <span className="muted">Bez detekované změny obsahu.</span>}
+      </div>
+      <div className="compare-grid">
+        <section><h3>Aktuálně platná verze</h3><MiniDocumentPreview root={getEffectiveRoot(publishedRoot, works, asOfDate)} /></section>
+        <section><h3>Náhled po {work.code}</h3><MiniDocumentPreview root={previewRoot} /></section>
+      </div>
+    </section>
+  );
+}
+
+function ComparePanel({ work, publishedRoot, works, asOfDate }: { work: ControlWork | null; publishedRoot: DocumentNode; works: ControlWork[]; asOfDate: string }) {
+  const current = getEffectiveRoot(publishedRoot, works, asOfDate);
+  const target = work?.draftRoot || current;
+  const diffs = getChangedNodeSummaries(current, target);
+  return (
+    <section className="work-detail-panel">
+      <div className="panel-row-head">
+        <h2>Porovnání verzí</h2>
+        <span>{work ? `Aktuální stav k ${formatDate(asOfDate)} vs. ${work.code}` : "Vyber změnu pro porovnání vůči aktuálnímu dokumentu."}</span>
+      </div>
+      <div className="changed-list">
+        {diffs.length ? diffs.map((item) => <span key={item.id} className={`changed-pill ${item.change}`}>{item.number || "-"} {item.title} · {diffLabel(item.change)}</span>) : <span className="muted">Žádné rozdíly vůči vybranému stavu.</span>}
+      </div>
+      <div className="compare-grid">
+        <section><h3>Aktuální / k datu</h3><MiniDocumentPreview root={current} /></section>
+        <section><h3>{work ? `${work.code} · ${work.title}` : "Vybraný stav"}</h3><MiniDocumentPreview root={target} /></section>
+      </div>
+    </section>
+  );
+}
+
+function MiniDocumentPreview({ root }: { root: DocumentNode }) {
+  const chapters = collectChapterNodes(root).slice(0, 8);
+  const lps = collectLpNodes(root).slice(0, 8);
+  return (
+    <div className="mini-document">
+      {chapters.map((chapter) => <div key={chapter.id}><strong>{chapter.number} {chapter.title}</strong><p>{stripHtml(chapter.data.html_obsah || "").slice(0, 140)}</p></div>)}
+      {lps.map((lp) => <div key={lp.id}><strong>LP {lp.data.cislo_lp || lp.number} · {lp.data.nadpis || lp.title}</strong><p>{(lp.data.lpp || []).map((lpp: any) => `${lpp.nazev}: ${formatPlatnost(lpp.platnost)}`).join("; ")}</p></div>)}
+    </div>
+  );
+}
+
 function DocumentControlPanel() {
   const { works, activeWorkId, root, publishedRoot, addControlWork, selectControlWork, updateControlWork, approveActiveWork, cancelActiveWork } = useDocStore();
   const selected = works.find((work) => work.id === activeWorkId) || works[0];
   const stats = {
-    approved: works.filter((work) => work.status === "approved").length,
+    approved: works.filter((work) => FINAL_WORKFLOW_STATUSES.includes(work.status)).length,
     draft: works.filter((work) => work.status === "draft").length,
     changed: selected ? selected.treeHash !== simpleHash(JSON.stringify(root)) : false,
     conflict: selected?.conflict,
@@ -813,8 +1028,8 @@ function DocumentControlPanel() {
         {works.map((work) => (
           <button key={work.id} className={work.id === activeWorkId ? "work-card active" : "work-card"} onClick={() => selectControlWork(work.id)}>
             <span className="work-code">{work.code}</span>
-            <span className={`badge ${work.status}`}>{work.status}</span>
-            <span className="muted">{work.type === "revision" ? "revize" : "změna"} · {work.effectiveDate}</span>
+            <span className={`badge ${work.status}`}>{workflowLabel(work.status)}</span>
+            <span className="muted">{work.type === "revision" ? "revize" : "změna"} · {work.title} · {formatDate(work.effectiveDate)}</span>
           </button>
         ))}
       </div>
@@ -822,14 +1037,14 @@ function DocumentControlPanel() {
         <div className="control-editor">
           <div className="grid-2">
             <Field label="Číslo" value={selected.code} onChange={(value) => updateControlWork(selected.id, { code: value })} />
+            <Field label="Název / stručný popis" value={selected.title} onChange={(value) => updateControlWork(selected.id, { title: value })} />
             <Field label="Účinnost" value={selected.effectiveDate} onChange={(value) => updateControlWork(selected.id, { effectiveDate: value })} />
+            <Field label="Autor / odpovědný" value={selected.owner} onChange={(value) => updateControlWork(selected.id, { owner: value })} />
           </div>
           <label className="field">
             <span>Stav</span>
             <select value={selected.status} onChange={(event) => updateControlWork(selected.id, { status: event.target.value as ControlWork["status"] })}>
-              <option value="draft">draft</option>
-              <option value="approved">approved</option>
-              <option value="cancelled">cancelled</option>
+              {WORKFLOW_STATUSES.map((status) => <option key={status} value={status}>{workflowLabel(status)}</option>)}
             </select>
           </label>
           <Textarea label="Poznámka / popis změny" value={selected.note} onChange={(value) => updateControlWork(selected.id, { note: value })} />
@@ -955,27 +1170,114 @@ function SoloBlockDocument({ block, onSelectNode }: { block: DocumentNode; onSel
   );
 }
 
-function RevisionTimeline({ works, asOfDate }: { works: ControlWork[]; asOfDate: string }) {
-  const approved = works
-    .filter((work) => work.status === "approved")
+function RevisionTimeline({ works, asOfDate, selectedWorkId, onSelect }: { works: ControlWork[]; asOfDate: string; selectedWorkId: string | null; onSelect: (id: string) => void }) {
+  const ordered = works
     .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate) || a.code.localeCompare(b.code));
   return (
     <div className="preview-timeline">
-      {approved.length ? approved.map((work) => (
-        <span key={work.id} className={work.effectiveDate <= asOfDate ? "timeline-pill active" : "timeline-pill"}>
-          {work.code} · {work.effectiveDate}
-        </span>
-      )) : <span className="muted">Zatím není schválená žádná revize nebo změna.</span>}
+      {ordered.length ? ordered.map((work) => (
+        <button key={work.id} className={`timeline-pill ${getWorkTemporalState(work, asOfDate)} ${work.type} ${selectedWorkId === work.id ? "selected" : ""}`} onClick={() => onSelect(work.id)}>
+          <strong>{work.code}</strong>
+          <span>{formatDate(work.effectiveDate)}</span>
+          <small>{workflowLabel(work.status)}</small>
+        </button>
+      )) : <span className="muted">Zatím není založená žádná revize nebo změna.</span>}
     </div>
   );
 }
 
 function getEffectiveRoot(publishedRoot: DocumentNode, works: ControlWork[], asOfDate: string) {
   const effective = works
-    .filter((work) => work.status === "approved" && work.effectiveDate <= asOfDate)
+    .filter((work) => FINAL_WORKFLOW_STATUSES.includes(work.status) && work.effectiveDate <= asOfDate)
     .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate) || a.code.localeCompare(b.code));
   const selected = effective[effective.length - 1];
   return selected?.draftRoot || publishedRoot;
+}
+
+function getCurrentEffectiveWork(works: ControlWork[], asOfDate: string) {
+  const effective = works
+    .filter((work) => FINAL_WORKFLOW_STATUSES.includes(work.status) && work.effectiveDate <= asOfDate)
+    .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate) || a.code.localeCompare(b.code));
+  return effective[effective.length - 1] || null;
+}
+
+function workflowLabel(status: WorkflowStatus) {
+  return WORKFLOW_STATUS_LABELS[status] || status;
+}
+
+function getWorkTemporalState(work: ControlWork, asOfDate: string): "current" | "future" | "archive" | "draft" {
+  if (["draft", "review", "commenting"].includes(work.status)) return "draft";
+  if (["rejected", "cancelled", "archived"].includes(work.status)) return "archive";
+  if (work.effectiveDate > asOfDate) return "future";
+  return "current";
+}
+
+function temporalLabel(state: ReturnType<typeof getWorkTemporalState>) {
+  return ({ current: "účinné / aktuální", future: "čeká na účinnost", archive: "archivní / zrušené", draft: "rozpracované" })[state];
+}
+
+function filterWorks(works: ControlWork[], filters: { workflowFilter: "all" | WorkflowStatus; typeFilter: "all" | "change" | "revision"; temporalFilter: "all" | "current" | "future" | "archive" | "draft"; ownerFilter: string; asOfDate: string }) {
+  return works.filter((work) => {
+    if (filters.workflowFilter !== "all" && work.status !== filters.workflowFilter) return false;
+    if (filters.typeFilter !== "all" && work.type !== filters.typeFilter) return false;
+    if (filters.ownerFilter !== "all" && (work.owner || "Neurčeno") !== filters.ownerFilter) return false;
+    if (filters.temporalFilter !== "all" && getWorkTemporalState(work, filters.asOfDate) !== filters.temporalFilter) return false;
+    return true;
+  });
+}
+
+function WorkStatusBadge({ work, asOfDate }: { work: ControlWork; asOfDate: string }) {
+  const state = getWorkTemporalState(work, asOfDate);
+  return <span className={`badge status-${state}`}>{workflowLabel(work.status)}</span>;
+}
+
+function getChangedNodeSummaries(baseRoot: DocumentNode, draftRoot: DocumentNode) {
+  const baseMap = new Map(flattenAllNodes(baseRoot).map((node) => [node.id, node]));
+  const draftMap = new Map(flattenAllNodes(draftRoot).map((node) => [node.id, node]));
+  const ids = new Set([...baseMap.keys(), ...draftMap.keys()]);
+  const result: Array<{ id: string; number: string; title: string; change: "added" | "changed" | "removed" }> = [];
+  ids.forEach((id) => {
+    const base = baseMap.get(id);
+    const draft = draftMap.get(id);
+    if (!base && draft) result.push({ id, number: draft.number, title: draft.title, change: "added" });
+    else if (base && !draft) result.push({ id, number: base.number, title: base.title, change: "removed" });
+    else if (base && draft && simpleHash(JSON.stringify(summarizeNodeForDiff(base))) !== simpleHash(JSON.stringify(summarizeNodeForDiff(draft)))) {
+      result.push({ id, number: draft.number || base.number, title: draft.title || base.title, change: "changed" });
+    }
+  });
+  return result.sort((a, b) => a.number.localeCompare(b.number, "cs", { numeric: true }));
+}
+
+function flattenAllNodes(node: DocumentNode): DocumentNode[] {
+  return [node, ...node.children.flatMap(flattenAllNodes)];
+}
+
+function summarizeNodeForDiff(node: DocumentNode) {
+  return { type: node.type, number: node.number, title: node.title, data: node.data, childIds: node.children.map((child) => child.id) };
+}
+
+function diffLabel(change: "added" | "changed" | "removed") {
+  return ({ added: "přidáno", changed: "změněno", removed: "odstraněno" })[change];
+}
+
+function getWorkConflicts(work: ControlWork, works: ControlWork[]) {
+  const conflicts: string[] = [];
+  const touched = new Set(getChangedNodeSummaries(work.baseRoot, work.draftRoot).map((item) => item.id));
+  works.forEach((candidate) => {
+    if (candidate.id === work.id) return;
+    if (candidate.createdAt > work.createdAt && FINAL_WORKFLOW_STATUSES.includes(candidate.status) && candidate.effectiveDate <= work.effectiveDate) {
+      conflicts.push(`${candidate.code} má účinnost ${formatDate(candidate.effectiveDate)} a byla schválena nad stejným publikačním tokem.`);
+    }
+    const otherTouched = getChangedNodeSummaries(candidate.baseRoot, candidate.draftRoot).map((item) => item.id);
+    if (otherTouched.some((id) => touched.has(id))) conflicts.push(`${candidate.code} upravuje stejnou část dokumentu.`);
+  });
+  if (work.conflict) conflicts.push(work.conflict);
+  return Array.from(new Set(conflicts));
+}
+
+function formatDate(value: string) {
+  if (!value) return "-";
+  return new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("cs-CZ");
 }
 
 function getPreviewBlocks(root: DocumentNode) {
@@ -1017,7 +1319,9 @@ function loadControlWorks(fallbackRoot: DocumentNode): ControlWork[] {
           id: work.id || uid("work"),
           code: work.code || "Z000",
           type: work.type || "change",
-          status: work.status || "draft",
+          status: normalizeWorkflowStatus(work.status),
+          title: work.title || work.note?.split("\n")[0] || (work.type === "revision" ? "Revize dokumentu" : "Změna dokumentu"),
+          owner: work.owner || "Neurčeno",
           effectiveDate: work.effectiveDate || new Date().toISOString().slice(0, 10),
           note: work.note || "",
           baseRoot: work.baseRoot || fallbackRoot,
@@ -1035,6 +1339,13 @@ function loadControlWorks(fallbackRoot: DocumentNode): ControlWork[] {
     }
   }
   return [];
+}
+
+function normalizeWorkflowStatus(status: unknown): WorkflowStatus {
+  if (WORKFLOW_STATUSES.includes(status as WorkflowStatus)) return status as WorkflowStatus;
+  if (status === "cancelled") return "cancelled";
+  if (status === "approved") return "approved";
+  return "draft";
 }
 
 function simpleHash(text: string) {
